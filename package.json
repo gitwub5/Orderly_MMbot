@@ -1,0 +1,25 @@
+{
+  "name": "orderly_mmbot",
+  "version": "1.0.0",
+  "description": "orderly market maker bot",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/ws": "^8.5.11",
+    "ts-node": "^10.9.2"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.4.2",
+    "bs58": "^6.0.0",
+    "dotenv": "^16.4.5",
+    "eip-712": "^1.0.0",
+    "ethers": "^6.13.1",
+    "near-api-js": "^4.0.3",
+    "node-fetch": "^3.3.2",
+    "ws": "^8.18.0"
+  }
+}
