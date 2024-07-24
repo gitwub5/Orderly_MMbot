@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import { Buffer } from 'buffer';
 import { KeyPair } from 'near-api-js';
 import { ed25519 } from '@noble/curves/ed25519';
-import { account } from '../interfaces/account';
+import { account } from '../../interfaces/account';
 
 //https://github.com/OrderlyNetwork/orderly-sdk-js/blob/2d450b4f33a84d86b62d4d9e584e688f94c7d7a4/README.md?plain=1#L129
 //`wsPrivate` - Private WebSocket. Wallet connection required.

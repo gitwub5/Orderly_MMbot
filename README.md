@@ -20,6 +20,8 @@
 - `orderSpacing`: 주문 간격 비율.
 - `takeProfitRatio`: 이익 실현 비율.
 - `stopLossRatio`: 손절매 비율.
+- `gamma`: 리스크 회피 계수.
+- `k`: 시장 조건 관련 상수.
 
 ### MarketMakingStrategy 클래스
 
@@ -28,20 +30,78 @@
 - `executeStrategy()`: 전략을 실행합니다. 초기 주문을 배치하고, 일정한 주기로 주문을 모니터링 및 조정합니다.
 - `spreadOrder()`: 최신 시세 데이터와 표준 편차를 바탕으로 중립 평균 가격을 계산하고, 여러 레벨의 매수 및 매도 주문을 배치합니다.
 - `fillOrderBook()`: 여러 레벨의 매수 및 매도 주문을 배치하여 오더북을 채웁니다.
+- `calculateOptimalSpread()`: 자산 가격의 분산과 시장 메이커의 리스크 회피 계수를 기반으로 스프레드를 동적으로 조정합니다.
+- `adjustMidPrice()`: 중립 평균 가격을 조정하여 시장 메이커의 인벤토리를 반영합니다.
+- `setBidAskPrices()`: 비드 및 애스크 가격을 중립 가격을 기준으로 설정합니다.
 
-## 사용 예시
+### 함수 설명
 
-1. `cexClient` 인스턴스를 생성하고 API 키와 시크릿을 사용하여 초기화합니다.
-2. `StrategyConfig` 객체를 생성하여 거래할 암호화폐 페어, 주문 수량, 거래 주기, 표준 편차 계산을 위한 거래 수를 설정합니다.
-3. `MarketMakingStrategy` 인스턴스를 생성하고, 설정한 구성과 함께 초기화합니다.
-4. `executeStrategy` 메서드를 호출하여 전략을 실행합니다.
+#### 1. Optimal Spread Formula
+스프레드를 동적으로 조정하는 함수입니다. 자산 가격의 분산과 시장 메이커의 리스크 회피 계수를 기반으로 스프레드를 계산합니다.
+```typescript
+function calculateOptimalSpread(stdDev: number, T: number, t: number, gamma: number, k: number): number {
+    return gamma * Math.pow(stdDev, 2) * (T - t) + (gamma / k) * Math.log(1 + (gamma / k));
+}
+```
 
-이 전략은 주기적으로 시장 데이터를 분석하고 매수 및 매도 주문을 조정하여 시장의 유동성을 제공하는 데 도움을 줍니다.
+#### 2. Mid Price Adjustment
+중립 평균 가격을 조정하여 시장 메이커의 인벤토리를 반영합니다.
+```typescript
+function adjustMidPrice(lastPrice: number, Q: number, stdDev: number, T: number, t: number, gamma: number): number {
+    return lastPrice - Q * gamma * Math.pow(stdDev, 2) * (T - t);
+}
+```
 
-## 주요 기능 및 설명
+#### 3.Price Setting
+비드 및 애스크 가격을 중립 가격을 기준으로 설정합니다.
+```typescript
+function setBidAskPrices(neutralPrice: number, priceOffset: number, A: number, B: number): { bidPrice: number, askPrice: number } {
+    const askPrice = Math.max(A, neutralPrice + priceOffset);
+    const bidPrice = Math.min(B, neutralPrice - priceOffset);
+    return { bidPrice, askPrice };
+}
+```
 
-- **중립 평균 가격 계산**: 마지막 거래 가격에서 현재 포지션 크기와 표준 편차의 제곱을 곱한 값을 뺀 값을 사용하여 중립 평균 가격을 계산합니다.
-- **주문 배치**: 고정 비율을 사용하여 여러 레벨의 매수 및 매도 주문을 배치합니다. 주문 간격은 마지막 거래 가격의 일정 비율로 설정됩니다.
-- **이익 실현 및 손절매**: 매수 및 매도 주문의 가격이 특정 범위 내에 있는지 확인하여 이익 실현과 손절매를 설정합니다.
+#### 4.Spread Order
+최신 시세 데이터와 표준 편차를 바탕으로 중립 평균 가격을 계산하고, 여러 레벨의 매수 및 매도 주문을 배치합니다.
+```typescript
+async function spreadOrder(client: MainClient, config: StrategyConfig) {
+    const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k } = config;
 
-이 전략은 거래량을 늘리고 오더북을 채우며, 손실을 최소화하고 스프레드 내에서 자전거래를 수행하는 데 효과적입니다.
+    // 최신 시세 데이터 및 현재 포지션, 표준 편차 가져오기
+    const tickerData = await client.getTicker(symbol);
+    const openPosition = (await client.getOnePosition(config.symbol)).data.average_open_price;
+    const lastPrice = parseFloat(tickerData.ticker.last);
+    const stdDev = await client.getStandardDeviation(symbol, stdDevPeriod);
+
+    // 최적 스프레드 계산
+    const T = 1; // 총 거래 시간 (예: 하루를 1로 설정)
+    const t = 0; // 현재 시간 (예: 거래 시작 시점은 0으로 설정)
+    const optimalSpread = calculateOptimalSpread(stdDev, T, t, gamma, k);
+
+    // 중립 평균 가격 계산 및 조정
+    const neutralPrice = adjustMidPrice(lastPrice, openPosition, stdDev, T, t, gamma);
+
+    // 기존 주문 취소
+    const openOrders = await client.getOpenOrders();
+    for (const order of openOrders.orders) {
+        await client.cancelOrder(symbol, order.id);
+    }
+
+    // 여러 레벨의 매수 및 매도 주문 배치
+    for (let level = 1; level <= orderLevels; level++) {
+        const priceOffset = orderSpacing * level * stdDev;
+        const { bidPrice, askPrice } = setBidAskPrices(neutralPrice, priceOffset, lastPrice * 0.95, lastPrice * 1.05);
+
+        // 매수 주문 배치
+        if (bidPrice > lastPrice * (1 - stopLossRatio) && bidPrice < lastPrice * (1 + takeProfitRatio)) {
+            await client.placeOrder(symbol, 'LIMIT', 'BUY', parseFloat(bidPrice.toFixed(4)), orderQuantity);
+        }
+
+        // 매도 주문 배치
+        if (askPrice < lastPrice * (1 + takeProfitRatio) && askPrice > lastPrice * (1 - stopLossRatio)) {
+            await client.placeOrder(symbol, 'LIMIT', 'SELL', parseFloat(askPrice.toFixed(4)), orderQuantity);
+        }
+    }
+}
+```

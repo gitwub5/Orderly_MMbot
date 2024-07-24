@@ -6,6 +6,7 @@ export class MarketClient extends BaseClient {
     super(account, apiUrl);
   }
 
+  //Get basic market information for one trading pair.
   public async getMarketInfo(symbol: string): Promise<MarketInfoResponse> {
     try {
       const response = await this.signAndSendRequest(
@@ -23,6 +24,7 @@ export class MarketClient extends BaseClient {
 
   //public async getTicker(symbol: string): Promise<TickerResponse> => getMarketTrades로 구현
   //Problem: 실시간 ticker 구현하려면 ws 이용해야함
+  //Get the latest market trades.
   public async getMarketTrades(
     symbol: string,
     limit?: number
@@ -76,3 +78,17 @@ export class MarketClient extends BaseClient {
     }
   }
 }
+
+
+// import { accountInfo } from "../utils/account";
+// import { RestAPIUrl } from "../enums";
+// async function main() {
+//   const client = new MarketClient(accountInfo, RestAPIUrl.mainnet);
+//   const trades = await client.getMarketTrades('PERP_TON_USDC');
+//   const prices = trades.data.rows
+//         .slice(0, 50)
+//         .map((trade) => trade.executed_price);
+//   console.log(trades.data);
+//   console.log(prices);
+// }
+// main();

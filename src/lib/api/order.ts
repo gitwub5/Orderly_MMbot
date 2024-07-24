@@ -1,4 +1,4 @@
-import { account } from "../interfaces/account";
+import { account } from "../../interfaces/account";
 import { signAndSendRequest } from './signer'
 
 export class placeOrder {

@@ -31,12 +31,12 @@ export class MainClient {
 
   public async getTradeHistory(
     symbol?: string,
+    size?: number,
     start_t?: number,
     end_t?: number,
     page?: number,
-    size?: number
   ): Promise<Interfaces.TradeHistoryResponse> {
-    return this.accountClient.getTradeHistory(symbol, start_t, end_t, page, size);
+    return this.accountClient.getTradeHistory(symbol, size, start_t, end_t, page);
   }
 
   // Exposing MarketClient methods
@@ -103,13 +103,13 @@ export class MainClient {
   //Main Class methods
   public async getStandardDeviation(
     symbol: string,
-    period: number
+    size: number
   ): Promise<number> {
     try {
-      const trades = await this.getTradeHistory(symbol);
-      const prices = trades.trades
-        .slice(0, period)
-        .map((trade) => parseFloat(trade.price));
+      const trades = await this.getTradeHistory(symbol, size);
+      const prices = trades.data.rows
+        .slice(0, size)
+        .map((trade) => trade.executed_price);
       const mean =
         prices.reduce((acc, price) => acc + price, 0) / prices.length;
       const variance =
@@ -123,7 +123,7 @@ export class MainClient {
 
   public async getOrderBookSpread(
     symbol: string
-  ): Promise<{ bid: string; ask: string }> {
+  ): Promise<{ bid: number ; ask: number }> {
     try {
       const orderBook = await this.getOrderBook(symbol);
       const bestBid = orderBook.data.bids[0].price;

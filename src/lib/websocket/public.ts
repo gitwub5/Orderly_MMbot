@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { account } from '../interfaces/account';
+import { account } from '../../interfaces/account';
 
 export class WebSocketManager {
   public url: string;
