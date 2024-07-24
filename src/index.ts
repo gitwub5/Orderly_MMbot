@@ -39,7 +39,7 @@ async function spreadOrder(client: MainClient, config: StrategyConfig) {
 
     // 최신 시세 데이터 및 현재 포지션, 표준 편차 가져오기
     const tickerData = await client.getMarketTrades(symbol);
-    const openPosition = (await client.getOnePosition(config.symbol)).data.average_open_price;
+    const openPosition = (await client.getOnePosition(config.symbol)).data.position_qty;
     const lastPrice = tickerData.data.rows[0].executed_price;
     const stdDev = await client.getStandardDeviation(symbol, stdDevPeriod);
 

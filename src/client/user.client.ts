@@ -129,11 +129,13 @@ export class AccountClient extends BaseClient {
 // import { RestAPIUrl } from "../enums";
 // async function main() {
 //   const client = new AccountClient(accountInfo, RestAPIUrl.mainnet);
-//   const trades = await client.getTradeHistory('PERP_TON_USDC', 50);
-//   const prices = trades.data.rows
-//         .slice(0, 50)
-//         .map((trade) => trade.executed_price);
-//   console.log(trades.data);
-//   console.log(prices);
+//   // const trades = await client.getTradeHistory('PERP_TON_USDC', 50);
+//   // const prices = trades.data.rows
+//   //       .slice(0, 50)
+//   //       .map((trade) => trade.executed_price);
+//   // console.log(trades.data);
+//   // console.log(prices);
+//   const res = await client.getOnePosition('PERP_TON_USDC');
+//   console.log(res)
 // }
 // main();
