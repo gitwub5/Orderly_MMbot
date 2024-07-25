@@ -12,20 +12,44 @@ interface StrategyConfig {
     orderSpacing: number; // 주문 간격 비율
     takeProfitRatio: number; // 이익 실현 비율
     stopLossRatio: number; // 손절매 비율
+    gamma: number; // 리스크 회피 계수
+    k: number; // 시장 조건 관련 상수
+}
+
+// 최적 스프레드 계산 함수
+function calculateOptimalSpread(stdDev: number, T: number, t: number, gamma: number, k: number): number {
+    return gamma * Math.pow(stdDev, 2) * (T - t) + (gamma / k) * Math.log(1 + (gamma / k));
+}
+
+// 중립 평균 가격 조정 함수
+function adjustMidPrice(lastPrice: number, Q: number, stdDev: number, T: number, t: number, gamma: number): number {
+    return lastPrice - Q * gamma * Math.pow(stdDev, 2) * (T - t);
+}
+
+// 비드 및 애스크 가격 설정 함수
+function setBidAskPrices(neutralPrice: number, priceOffset: number, A: number, B: number): { bidPrice: number, askPrice: number } {
+    const askPrice = Math.max(A, neutralPrice + priceOffset);
+    const bidPrice = Math.min(B, neutralPrice - priceOffset);
+    return { bidPrice, askPrice };
 }
 
 // 매수 및 매도 주문을 배치하는 함수
 async function spreadOrder(client: MainClient, config: StrategyConfig) {
-    const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio } = config;
+    const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k } = config;
 
     // 최신 시세 데이터 및 현재 포지션, 표준 편차 가져오기
-    const tickerData = await client.getTicker(symbol);
-    const openPosition = await client.getOpenPosition();
-    const lastPrice = parseFloat(tickerData.ticker.last);
+    const tickerData = await client.getMarketTrades(symbol);
+    const openPosition = (await client.getOnePosition(config.symbol)).data.position_qty;
+    const lastPrice = tickerData.data.rows[0].executed_price;
     const stdDev = await client.getStandardDeviation(symbol, stdDevPeriod);
 
-    // 중립 평균 가격 계산
-    const neutralPrice = lastPrice - openPosition * Math.pow(stdDev, 2);
+    // 최적 스프레드 계산
+    const T = 1; // 총 거래 시간 (예: 하루를 1로 설정)
+    const t = 0; // 현재 시간 (예: 거래 시작 시점은 0으로 설정)
+    const optimalSpread = calculateOptimalSpread(stdDev, T, t, gamma, k);
+
+    // 중립 평균 가격 계산 및 조정
+    const neutralPrice = adjustMidPrice(lastPrice, openPosition, stdDev, T, t, gamma);
 
     // 기존 주문 취소
     const openOrders = await client.getOpenOrders();
@@ -36,19 +60,16 @@ async function spreadOrder(client: MainClient, config: StrategyConfig) {
     // 여러 레벨의 매수 및 매도 주문 배치
     for (let level = 1; level <= orderLevels; level++) {
         const priceOffset = orderSpacing * level * stdDev;
-        const buyPrice = neutralPrice - priceOffset;
-        const sellPrice = neutralPrice + priceOffset;
-        const takeProfitPrice = lastPrice * (1 + takeProfitRatio);
-        const stopLossPrice = lastPrice * (1 - stopLossRatio);
+        const { bidPrice, askPrice } = setBidAskPrices(neutralPrice, priceOffset, lastPrice * 0.95, lastPrice * 1.05);
 
         // 매수 주문 배치
-        if (buyPrice > stopLossPrice && buyPrice < takeProfitPrice) {
-            await client.placeOrder(symbol, 'LIMIT','BUY', parseFloat(buyPrice.toFixed(4)), orderQuantity);
+        if (bidPrice > lastPrice * (1 - stopLossRatio) && bidPrice < lastPrice * (1 + takeProfitRatio)) {
+            await client.placeOrder(symbol, 'LIMIT', 'BUY', parseFloat(bidPrice.toFixed(4)), orderQuantity);
         }
 
         // 매도 주문 배치
-        if (sellPrice < takeProfitPrice && sellPrice > stopLossPrice) {
-            await client.placeOrder(symbol, 'LIMIT', 'SELL',  parseFloat(sellPrice.toFixed(4)), orderQuantity);
+        if (askPrice < lastPrice * (1 + takeProfitRatio) && askPrice > lastPrice * (1 - stopLossRatio)) {
+            await client.placeOrder(symbol, 'LIMIT', 'SELL', parseFloat(askPrice.toFixed(4)), orderQuantity);
         }
     }
 }
@@ -58,8 +79,8 @@ async function fillOrderBook(client: MainClient, config: StrategyConfig) {
     const { symbol, orderQuantity, orderLevels, orderSpacing } = config;
 
     // 최신 시세 데이터 가져오기
-    const tickerData = await client.getTicker(symbol);
-    const lastPrice = parseFloat(tickerData.ticker.last);
+    const tickerData = await client.getMarketTrades(symbol);
+    const lastPrice = tickerData.data.rows[0].executed_price;
 
     // 기존 주문 취소
     const openOrders = await client.getOpenOrders();
@@ -75,12 +96,12 @@ async function fillOrderBook(client: MainClient, config: StrategyConfig) {
 
         // 매수 주문 배치 (5% 이상)
         if (buyPrice < lastPrice * 0.95) {
-            await client.placeOrder(symbol, 'LIMIT','BUY', parseFloat(buyPrice.toFixed(4)), orderQuantity);
+            await client.placeOrder(symbol, 'LIMIT', 'BUY', parseFloat(buyPrice.toFixed(4)), orderQuantity);
         }
 
         // 매도 주문 배치 (5% 이상)
         if (sellPrice > lastPrice * 1.05) {
-            await client.placeOrder(symbol, 'LIMIT', 'SELL',  parseFloat(sellPrice.toFixed(4)), orderQuantity);
+            await client.placeOrder(symbol, 'LIMIT', 'SELL', parseFloat(sellPrice.toFixed(4)), orderQuantity);
         }
     }
 }
@@ -99,7 +120,9 @@ async function executeStrategy() {
         orderLevels: 10,
         orderSpacing: 0.005,
         takeProfitRatio: 0.02,
-        stopLossRatio: 0.01
+        stopLossRatio: 0.01,
+        gamma: 0.1,
+        k: 1
     };
 
     const { tradePeriodMs } = config;
@@ -110,7 +133,8 @@ async function executeStrategy() {
             await spreadOrder(client, config);
             await fillOrderBook(client, config);
         } catch (error) {
-            console.error(`Error during strategy execution: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+            console.error(`Error during strategy execution: ${errorMessage}`);
         } finally {
             setTimeout(runStrategy, tradePeriodMs);
         }
@@ -120,7 +144,8 @@ async function executeStrategy() {
     try {
         await runStrategy();
     } catch (error) {
-        console.error(`Strategy execution failed: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        console.error(`Strategy execution failed: ${errorMessage}`);
     }
 }
 
@@ -129,6 +154,7 @@ async function executeStrategy() {
     try {
         await executeStrategy();
     } catch (error) {
-        console.error(`Strategy execution failed: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        console.error(`Strategy execution failed: ${errorMessage}`);
     }
 })();

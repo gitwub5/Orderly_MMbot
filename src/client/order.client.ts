@@ -32,10 +32,7 @@ export class OrderClient extends BaseClient {
         `${this.apiUrl}/v1/order`,
         {
           method: "POST",
-          body: JSON.stringify(body),
-          headers: {
-            "Content-Type": "application/json",
-          },
+          body: JSON.stringify(body)
         }
       );
 

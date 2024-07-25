@@ -1,9 +1,9 @@
-import { signEIP712Message, signAndSendRequest } from "./signer";
-import { BalanceResponse, OrderResponse } from "../interfaces";
-import { formatDate } from "../utils/formatDate";
-import { OrderStatus, RestAPIUrl, RestApiVersion } from "../enums";
-import { account } from "../interfaces/account";
-import { accountInfo } from "../utils/account";
+import { generateWalletSignature, signAndSendRequest } from "./signer";
+import { BalanceResponse, OrderResponse } from "../../interfaces";
+import { formatDate } from "../../utils/formatDate";
+import { RestAPIUrl } from "../../enums";
+import { account } from "../../interfaces/account";
+import { accountInfo } from "../../utils/account";
 
 
 //Get the current summary of user token holdings.
@@ -160,30 +160,33 @@ export async function reqPnLSettlement(){
         const message = {
             brokerId: "orderly",
             chainId: 42161,
-            settleNonce: settle_nonce,
             timestamp: Date.now(),
+            settleNonce: settle_nonce,
         };
 
-        const [walletAddress, signature] = await signEIP712Message(accountInfo.privateKey, message);
-        
+        const [walletAddress, signature] = await generateWalletSignature(
+            accountInfo.walletPrivateKey,
+            message
+          );
+    
         const body: Record<string, any> = {
             signature: signature,
-            userAddress: '0x98bd5B06aD246Cb4693B3F781264750FfbA0589E',
+            userAddress: walletAddress,
             verifyingContract: '0x6F7a338F2aA472838dEFD3283eB360d4Dff5D203',
             message: message
         };
 
-        const res = await signAndSendRequest(
+        const response = await signAndSendRequest(
             accountInfo.accountId,
             accountInfo.privateKey,
             `${RestAPIUrl.mainnet}/v1/settle_pnl`,
             {
                 method: 'POST',
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
             }
         );
 
-        const json = await res.json();
+        const json = await response.json();
         return json;
     } catch (error) {
         console.error('Error request PnL settlement:', error);
@@ -193,7 +196,7 @@ export async function reqPnLSettlement(){
 
 async function main() {
     try {
-      console.log(await getSettlePnLNonce());
+    //   console.log(await getSettlePnLNonce());
     //   console.log(await getPnLSettleLHis());
         console.log(await reqPnLSettlement());
     //  console.log(await getOrderlyPositions('PERP_TON_USDC'))
