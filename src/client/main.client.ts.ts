@@ -2,6 +2,8 @@ import { AccountClient } from './user.client';
 import { MarketClient } from './market.client';
 import { OrderClient } from './order.client';
 import * as Interfaces from '../interfaces';
+import { accountInfo } from '../utils/account';
+import { RestAPIUrl } from '../enums';
 
 export class MainClient {
   public accountClient: AccountClient;
@@ -65,7 +67,7 @@ export class MainClient {
     symbol: string,
     orderType: string,
     side: string,
-    price: number,
+    price: number | null,
     amount: number
   ): Promise<Interfaces.OrderResponse> {
     return this.orderClient.placeOrder(symbol, orderType, side, price, amount);
@@ -106,15 +108,16 @@ export class MainClient {
     size: number
   ): Promise<number> {
     try {
+      // 최근 거래 기록 가져오기 (size 크기만큼)
       const trades = await this.getTradeHistory(symbol, size);
-      const prices = trades.data.rows
-        .slice(0, size)
-        .map((trade) => trade.executed_price);
-      const mean =
-        prices.reduce((acc, price) => acc + price, 0) / prices.length;
-      const variance =
-        prices.reduce((acc, price) => acc + Math.pow(price - mean, 2), 0) /
-        prices.length;
+      // 각 거래의 가격들 불러오기 (length: size가 prices.length보다 클 수 있으므로)
+      const length = Math.min(size, trades.data.rows.length);
+      const prices = trades.data.rows.slice(0, length).map((trade) => trade.executed_price);
+      // 각 가격의 평균을 계산
+      const mean = prices.reduce((acc, price) => acc + price, 0) / prices.length;
+      // 분산 계산
+      const variance = prices.reduce((acc, price) => acc + Math.pow(price - mean, 2), 0) / prices.length;
+      // 표준편차 계산
       return Math.sqrt(variance);
     } catch (error) {
       throw new Error(`Failed to fetch standard deviation: ${error}`);
