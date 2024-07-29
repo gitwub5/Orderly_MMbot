@@ -31,14 +31,14 @@ export class MainClient {
     return this.accountClient.getAllPositions();
   }
 
-  public async getTradeHistory(
+  public async getClientTradeHistory(
     symbol?: string,
     size?: number,
     start_t?: number,
     end_t?: number,
     page?: number,
   ): Promise<Interfaces.TradeHistoryResponse> {
-    return this.accountClient.getTradeHistory(symbol, size, start_t, end_t, page);
+    return this.accountClient.getClientTradeHistory(symbol, size, start_t, end_t, page);
   }
 
   // Exposing MarketClient methods
@@ -109,7 +109,8 @@ export class MainClient {
   ): Promise<number> {
     try {
       // 최근 거래 기록 가져오기 (size 크기만큼)
-      const trades = await this.getTradeHistory(symbol, size);
+      const trades = await this.getMarketTrades(symbol, size);
+
       // 각 거래의 가격들 불러오기 (length: size가 prices.length보다 클 수 있으므로)
       const length = Math.min(size, trades.data.rows.length);
       const prices = trades.data.rows.slice(0, length).map((trade) => trade.executed_price);

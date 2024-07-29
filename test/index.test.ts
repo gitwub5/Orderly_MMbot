@@ -1,4 +1,4 @@
-import { MainClient } from '../src/client/main.client.ts';
+import { MainClient } from '../src/client/main.client';
 import { RestAPIUrl } from '../src/enums';
 import { accountInfo } from '../src/utils/account';
 
@@ -15,6 +15,7 @@ interface StrategyConfig {
     stopLossRatio: number; // 손절매 비율
     gamma: number; // 리스크 회피 계수
     k: number; // 시장 조건 관련 상수
+    maxPosition: number; // 최대 포지션 한도
 }
 
 let startTime: Date;
@@ -29,16 +30,37 @@ function adjustMidPrice(lastPrice: number, Q: number, stdDev: number, T: number,
     return lastPrice - Q * gamma * Math.pow(stdDev, 2) * (T - t);
 }
 
-// 비드 및 애스크 가격 설정 함수
-function setBidAskPrices(neutralPrice: number, priceOffset: number, A: number, B: number): { bidPrice: number, askPrice: number } {
-    const askPrice = Math.max(A, neutralPrice + priceOffset);
-    const bidPrice = Math.min(B, neutralPrice - priceOffset);
-    return { bidPrice, askPrice };
+// 동적 주문 크기 조정 함수
+function adjustPositionSize(baseSize: number, stdDev: number, stdDevThreshold: number): number {
+    if (stdDev > stdDevThreshold) {
+        // 변동성이 높으면 포지션 크기를 줄임
+        return baseSize * 0.8;
+    } else {
+        return baseSize;
+    }
 }
+
+// 동적 주문 간격 조정 함수
+function adjustOrderSpacing(baseSpacing: number, stdDev: number, stdDevThreshold: number): number {
+    if (stdDev > stdDevThreshold) {
+        // 변동성이 높으면 주문 간격을 넓힘
+        return baseSpacing * 1.2;
+    } else {
+        return baseSpacing;
+    }
+}
+
+// 지수 감소 기반 주문 크기 계산 함수
+function calculateOrderQuantityExponential(baseQuantity: number, level: number): number {
+    const decayFactor = 0.8; // 감소 비율
+    const quantity = baseQuantity * Math.pow(decayFactor, level - 1);
+    return Math.round(quantity * 10) / 10; // 첫째 자리까지 반올림
+}
+
 
 // 매수 및 매도 주문을 배치하는 함수
 async function spreadOrder(client: MainClient, config: StrategyConfig) {
-    const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k } = config;
+    const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k, maxPosition } = config;
 
     console.log('Retrieving market trades...');
     const tickerData = await client.getMarketTrades(symbol);
@@ -56,7 +78,7 @@ async function spreadOrder(client: MainClient, config: StrategyConfig) {
     console.log('Standard deviation:', stdDev);
 
     // 방법 #1
-    // const T = 1; // 총 거래 시간 (예: 하루를 1로 설정)
+    // const T = 1;
     // const t = 0;
 
     // 방법 #2
@@ -106,64 +128,44 @@ async function spreadOrder(client: MainClient, config: StrategyConfig) {
     console.log('Canceling all existing orders...');
     await client.cancelAllOrders(symbol);
 
-    console.log('Placing orders...');
-    for (let level = 1; level <= orderLevels; level++) {
-        const priceOffset = optimalSpread * level;
-        let { bidPrice, askPrice } = setBidAskPrices(neutralPrice, priceOffset, lastPrice * 0.95, lastPrice * 1.05);
+    // 주문 간격 조정
+    const dynamicOrderSpacing = adjustOrderSpacing(orderSpacing, stdDev, 0.003);
+    // 주문 수량 조정
+    const adjustedOrderQuantity = adjustPositionSize(orderQuantity, stdDev, 0.003);
 
+    console.log('Placing orders...');
+    let totalPosition = openPosition; // 현재 포지션 크기
+   
+    for (let level = 1; level <= orderLevels; level++) {
+        const priceOffset = dynamicOrderSpacing * optimalSpread * level;
+        let bidPrice = lastPrice - priceOffset;
+        let askPrice = lastPrice + priceOffset;
         bidPrice = fixPrecision(bidPrice, 4);
         askPrice = fixPrecision(askPrice, 4);
+        const takeProfitPrice = lastPrice * (1 + takeProfitRatio);
+        const stopLossPrice = lastPrice * (1 - stopLossRatio);
 
-        console.log(`Level ${level} - Bid Price: ${bidPrice}, Ask Price: ${askPrice}`);
+        const levelOrderQuantity = calculateOrderQuantityExponential(adjustedOrderQuantity, level);
+        console.log(`Level ${level} - Bid Price: ${bidPrice}, Ask Price: ${askPrice}, Order Quantity: ${levelOrderQuantity}`);
 
-        if (bidPrice > lastPrice * (1 - stopLossRatio) && bidPrice < lastPrice * (1 + takeProfitRatio)) {
-            console.log(`Placing BUY order - Price: ${bidPrice}, Quantity: ${orderQuantity}`);
-            await client.placeOrder(symbol, 'LIMIT', 'BUY', bidPrice, orderQuantity);
+        if (bidPrice > stopLossPrice && bidPrice < takeProfitPrice && totalPosition + levelOrderQuantity <= maxPosition) {
+            if (bidPrice * levelOrderQuantity > 10) {
+                console.log(`Placing BUY order - Price: ${bidPrice}, Quantity: ${levelOrderQuantity}`);
+                await client.placeOrder(symbol, 'LIMIT', 'BUY', bidPrice, levelOrderQuantity);
+                totalPosition += levelOrderQuantity;
+            }
         }
 
-        if (askPrice < lastPrice * (1 + takeProfitRatio) && askPrice > lastPrice * (1 - stopLossRatio)) {
-            console.log(`Placing SELL order - Price: ${askPrice}, Quantity: ${orderQuantity}`);
-            await client.placeOrder(symbol, 'LIMIT', 'SELL', askPrice, orderQuantity);
-        }
-    }
-}
-
-// 오더북을 채우는 함수
-async function fillOrderBook(client: MainClient, config: StrategyConfig) {
-    const { symbol, orderQuantity, orderLevels, orderSpacing } = config;
-
-    console.log('Retrieving market trades...');
-    const tickerData = await client.getMarketTrades(symbol);
-    console.log('Market trades data:', tickerData);
-
-    const lastPrice = tickerData.data.rows[0].executed_price;
-    console.log('Last executed price:', lastPrice);
-
-    console.log('Canceling all existing orders...');
-    await client.cancelAllOrders(symbol);
-
-    console.log('Placing orders...');
-    for (let level = 1; level <= orderLevels; level++) {
-        const priceOffset = lastPrice * orderSpacing * level;
-        let buyPrice = lastPrice - priceOffset;
-        let sellPrice = lastPrice + priceOffset;
-
-        buyPrice = fixPrecision(buyPrice, 4);
-        sellPrice = fixPrecision(sellPrice, 4);
-
-        console.log(`Level ${level} - Buy Price: ${buyPrice}, Sell Price: ${sellPrice}`);
-
-        if (buyPrice < lastPrice * 0.95) {
-            console.log(`Placing BUY order - Price: ${buyPrice}, Quantity: ${orderQuantity}`);
-            await client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
-        }
-
-        if (sellPrice > lastPrice * 1.05) {
-            console.log(`Placing SELL order - Price: ${sellPrice}, Quantity: ${orderQuantity}`);
-            await client.placeOrder(symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
+        if (askPrice < takeProfitPrice && askPrice > stopLossPrice && totalPosition - levelOrderQuantity >= -maxPosition) {
+            if (askPrice * levelOrderQuantity > 10) {
+                console.log(`Placing SELL order - Price: ${askPrice}, Quantity: ${levelOrderQuantity}`);
+                await client.placeOrder(symbol, 'LIMIT', 'SELL', askPrice, levelOrderQuantity);
+                totalPosition -= levelOrderQuantity;
+            }
         }
     }
 }
+
 
 function fixPrecision(value: number, precision: number): number {
     const factor = Math.pow(10, precision);
@@ -204,15 +206,16 @@ async function executeStrategy() {
     const config: StrategyConfig = {
         symbol: 'PERP_TON_USDC',
         precision: 4,
-        orderQuantity: 2,
-        tradePeriodMs: 45000, //45초
+        orderQuantity: 8,
+        tradePeriodMs: 60000, //1분
         stdDevPeriod: 20,
-        orderLevels: 5,
-        orderSpacing: 0.01,
+        orderLevels: 10,
+        orderSpacing: 0.05,
         takeProfitRatio: 0.03,
         stopLossRatio: 0.01,
-        gamma: 0.08,
-        k: 2
+        gamma: 0.55,
+        k: 3,
+        maxPosition: 30,
     };
 
     const { tradePeriodMs, symbol } = config;
