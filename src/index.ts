@@ -18,13 +18,13 @@ async function executeStrategy() {
         precision: 4,
         orderQuantity: 8,
         tradePeriodMs: 60000, //1분
-        stdDevPeriod: 15,
-        orderLevels: 10,
-        orderSpacing: 0.05,
+        stdDevPeriod: 20,
+        orderLevels: 5,
+        orderSpacing: 0.02,
         takeProfitRatio: 0.03,
         stopLossRatio: 0.01,
-        gamma: 0.55,
-        k: 3,
+        gamma: 0.4,
+        k: 6,
         maxPosition: 30,
     };
 

@@ -1,6 +1,5 @@
 import { MainClient } from "../client/main.client";
-import { calculateOptimalSpread, adjustMidPrice, adjustPositionSize, adjustOrderSpacing, calculateOrderQuantity } from "./stratgy";
-import { fixPrecision } from "../utils/fixPrecision";
+import { calculateOptimalSpread, adjustMidPrice, adjustPositionSize, adjustOrderSpacing, calculateOrderQuantity, setBidAskPrices } from "./stratgy";
 import { StrategyConfig } from "./stratgyConfig";
 
 // 매수 및 매도 주문을 배치하는 함수
@@ -45,14 +44,12 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
     let totalPosition = openPosition; // 현재 포지션 크기
    
     for (let level = 1; level <= orderLevels; level++) {
-        const priceOffset = dynamicOrderSpacing * optimalSpread * level;
-        let bidPrice = lastPrice - priceOffset;
-        let askPrice = lastPrice + priceOffset;
-        bidPrice = fixPrecision(bidPrice, 4);
-        askPrice = fixPrecision(askPrice, 4);
+        const priceOffset = (optimalSpread / 2) * level * dynamicOrderSpacing;
+        let { bidPrice, askPrice } = setBidAskPrices(neutralPrice, priceOffset, config.precision);
+
         const takeProfitPrice = lastPrice * (1 + takeProfitRatio);
         const stopLossPrice = lastPrice * (1 - stopLossRatio);
-
+        
         const levelOrderQuantity = await calculateOrderQuantity(adjustedOrderQuantity, level);
         console.log(`Level ${level} - Bid Price: ${bidPrice}, Ask Price: ${askPrice}, Order Quantity: ${levelOrderQuantity}`);
 

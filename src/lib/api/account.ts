@@ -258,14 +258,14 @@ export async function getFundingFeeHis(
 
 // https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-user-daily-volume
 export async function getDailyVolume(
-    start_t: number,
-    end_t: number
+    start_t: Date,
+    end_t: Date
 ): Promise<any> {
     try {
         // 쿼리 파라미터 객체 생성
         const query: Record<string, string> = {
-            start_t: start_t.toString(),
-            end_t: end_t.toString()
+            start_t: formatDate(start_t),
+            end_t: formatDate(end_t)
         };
 
         // Query string 생성
@@ -281,6 +281,7 @@ export async function getDailyVolume(
             }
         );
         const json = await res.json();
+        console.log(json)
         return json;
     } catch (error) {
         console.error('Error checking orders info:', error);
@@ -312,7 +313,7 @@ export async function getUserStatics(
             }
         );
         const json = await res.json();
-        console.log(json.data.rows);
+        console.log(json);
         return json.data.rows;
     } catch (error) {
         console.error('Error checking daily status:', error);
