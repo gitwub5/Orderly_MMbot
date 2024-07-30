@@ -23,9 +23,9 @@ async function testMainClient() {
         console.log('Position:', position);
 
         // 거래 기록 확인
-        console.log('Testing getTradeHistory...');
-        const tradeHistory = await client.getTradeHistory(symbol, 10);
-        console.log('Trade History:', tradeHistory);
+        // console.log('Testing getTradeHistory...');
+        // const tradeHistory = await client.getTradeHistory(symbol, 10);
+        // console.log('Trade History:', tradeHistory);
 
         // 주문 배치
         console.log('Testing placeOrder...');
