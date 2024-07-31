@@ -53,9 +53,6 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
     } else if (netPosition > 0) { // If net long, increase buy order spacing
         buyOrderSpacing *= 1.5;
         sellOrderSpacing *= 0.5;
-    } else{
-        sellOrderSpacing *= 0.8;
-        buyOrderSpacing *= 0.8;
     }
    
     for (let level = 1; level <= orderLevels; level++) {
@@ -94,3 +91,5 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
         }
     }
 }
+
+//TODO: PnL 불러오는 함수 -> 손실이(ex:1%) 발생하면 현재 포지션 개수만큼 전부 지정가 걸어버려서 탈출하는 방법
