@@ -5,12 +5,12 @@ import { StrategyConfig } from './strategy/strategyConfig';
 import { cancelAllOrdersAndClosePositions } from './strategy/closePosition';
 import { spreadOrder } from './strategy/spreadOrder';
 import { strategies } from './strategy/strategies';
+import { startPeriodicMessages } from './utils/telegram/telegramBot';
+import { stopFlag } from './globals';
 
 // 전략 실행 함수
 async function executeStrategy(config: StrategyConfig) {
-    // 클라이언트 인스턴스 생성
     const client = new MainClient(accountInfo, RestAPIUrl.mainnet);
-
     const { symbol, tradePeriodMs } = config;
 
     // Ctrl+C 이벤트 핸들러
@@ -23,13 +23,19 @@ async function executeStrategy(config: StrategyConfig) {
     // 전략 실행 반복 함수
     const runStrategy = async () => {
         try {
+            if (stopFlag) {
+                console.log(`Trading for ${symbol} has been stopped.`);
+                return;
+            }
             console.log(`Running market making strategy for ${symbol}...`);
             await spreadOrder(client, config);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             console.error(`Error during strategy execution for ${symbol}: ${errorMessage}`);
         } finally {
-            setTimeout(runStrategy, tradePeriodMs);
+            if (!stopFlag) {
+                setTimeout(runStrategy, tradePeriodMs);
+            }
         }
     };
 
@@ -52,6 +58,7 @@ async function executeMultipleStrategies(strategies: Record<string, StrategyConf
     try {
         console.log('Starting strategy execution for multiple symbols...');
         await executeMultipleStrategies(strategies);
+        startPeriodicMessages();
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
         console.error(`Strategy execution failed: ${errorMessage}`);

@@ -297,7 +297,7 @@ export async function getDailyVolume(
             }
         );
         const json = await res.json();
-        console.log(json)
+        //console.log(json)
         return json;
     } catch (error) {
         console.error('Error checking orders info:', error);

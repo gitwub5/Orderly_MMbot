@@ -11,11 +11,11 @@ export const strategies: Record<string, StrategyConfig> = {
         tradePeriodMs: 30000,
         stdDevPeriod: 20,
         orderLevels: 5,
-        orderSpacing: 0.01, // (0.01~0.1)
+        orderSpacing: 0.02, // (0.01~0.1)
         takeProfitRatio: 0.03,
         stopLossRatio: 0.01,
-        gamma: 0.05, // 낮은 값은 더 많은 리스크를 감수하고, 높은 값은 리스크를 줄이는 경향 (0.01~0.5)
-        k: 6,  // 시장의 변동성과 거래 빈도에 따라 조정 (1~10)
+        gamma: 0.08, // 낮은 값은 더 많은 리스크를 감수하고, 높은 값은 리스크를 줄이는 경향 (0.01~0.5)
+        k: 4.5,  // 시장의 변동성과 거래 빈도에 따라 조정 (1~10)
         stdDevThreshold: 0.012,
     },
     
