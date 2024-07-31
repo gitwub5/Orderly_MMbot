@@ -49,10 +49,13 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
 
     if (netPosition < 0) { // If net short, increase sell order spacing
         sellOrderSpacing *= 1.5;
-        buyOrderSpacing *= 0.5
+        buyOrderSpacing *= 0.5;
     } else if (netPosition > 0) { // If net long, increase buy order spacing
         buyOrderSpacing *= 1.5;
         sellOrderSpacing *= 0.5;
+    } else{
+        sellOrderSpacing *= 0.8;
+        buyOrderSpacing *= 0.8;
     }
    
     for (let level = 1; level <= orderLevels; level++) {
