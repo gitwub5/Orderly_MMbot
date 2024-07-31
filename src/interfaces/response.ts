@@ -160,3 +160,22 @@ export interface OrderBookResponse {
     timestamp: number;
   };
 }
+
+export interface KlineResponse {
+  success: boolean;
+  timestamp: number;
+  data: {
+    rows: {
+      open: number;
+      close: number;
+      low: number;
+      high: number;
+      volume: number;
+      amount: number;
+      symbol: string;
+      type: string;
+      start_timestamp: number;
+      end_timestamp: number;
+    }[];
+  };
+}

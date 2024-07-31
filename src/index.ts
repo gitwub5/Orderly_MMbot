@@ -1,10 +1,10 @@
 import { MainClient } from './client/main.client';
 import { RestAPIUrl } from './enums';
 import { accountInfo } from './utils/account';
-import { StrategyConfig } from './stratgy/strategyConfig';
-import { cancelAllOrdersAndClosePositions } from './stratgy/closePosition';
-import { spreadOrder } from './stratgy/spreadOrder';
-import { strategies } from './stratgy/strategies';
+import { StrategyConfig } from './strategy/strategyConfig';
+import { cancelAllOrdersAndClosePositions } from './strategy/closePosition';
+import { spreadOrder } from './strategy/spreadOrder';
+import { strategies } from './strategy/strategies';
 
 // 전략 실행 함수
 async function executeStrategy(config: StrategyConfig) {

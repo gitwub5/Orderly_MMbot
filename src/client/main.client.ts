@@ -62,6 +62,14 @@ export class MainClient {
     return this.marketClient.getOrderBook(symbol, max_level);
   }
 
+  public async getKline(
+    symbol: string,
+    type: string,
+    limit?: number
+  ): Promise<Interfaces.KlineResponse> {
+    return this.marketClient.getKline(symbol, type, limit);
+  }
+
   // Exposing OrderClient methods
   public async placeOrder(
     symbol: string,

@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/node-telegram-bot-api": "^0.64.7",
     "@types/ws": "^8.5.11",
     "ts-node": "^10.9.2"
   },
@@ -23,6 +24,7 @@
     "ethers": "^6.13.1",
     "near-api-js": "^4.0.3",
     "node-fetch": "^3.3.2",
+    "node-telegram-bot-api": "^0.63.0",
     "ws": "^8.18.0"
   }
 }

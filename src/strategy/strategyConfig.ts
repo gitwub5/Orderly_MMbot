@@ -11,5 +11,5 @@ export interface StrategyConfig {
     stopLossRatio: number; // 손절매 비율
     gamma: number; // 리스크 회피 계수
     k: number; // 시장 조건 관련 상수
-    maxPosition: number; // 최대 포지션 한도
+    stdDevThreshold: number; // 표준 편차 임계값 (백테스팅 필요)
 }
