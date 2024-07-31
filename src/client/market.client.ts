@@ -1,5 +1,5 @@
 import { BaseClient } from './base.client';
-import { account, MarketInfoResponse, MarketTradeResponse, OrderBookResponse } from '../interfaces';
+import { account, MarketInfoResponse, MarketTradeResponse, OrderBookResponse, KlineResponse } from '../interfaces';
 
 export class MarketClient extends BaseClient {
   constructor(account: account, apiUrl: string) {
@@ -22,8 +22,6 @@ export class MarketClient extends BaseClient {
     }
   }
 
-  //public async getTicker(symbol: string): Promise<TickerResponse> => getMarketTrades로 구현
-  //Problem: 실시간 ticker 구현하려면 ws 이용해야함
   //Get the latest market trades.
   public async getMarketTrades(
     symbol: string,
@@ -77,6 +75,38 @@ export class MarketClient extends BaseClient {
       throw new Error(`Error - Get OrderBook: ${error}`);
     }
   }
+
+  public async getKline(
+    symbol: string,
+    type: string,
+    limit?: number
+  ): Promise<KlineResponse> {
+    //type: 1m/5m/15m/30m/1h/4h/12h/1d/1w/1mon/1y
+    try {
+      const query: Record<string, any> = {
+        symbol: symbol,
+        type: type,
+      };
+  
+      if (limit) {
+        query.limit = limit;
+      }
+  
+      const queryString = new URLSearchParams(query).toString();
+      const url = `${this.apiUrl}/v1/kline/${queryString ? '?' + queryString : ''}`;
+      const response = await this.signAndSendRequest(
+        this.account.accountId,
+        this.account.privateKey,
+        url
+      );
+  
+      const json = await response.json();
+      // console.log('getOrderBook:', JSON.stringify(json, undefined, 2));
+      return json;
+    } catch (error) {
+      throw new Error(`Error - Get OrderBook: ${error}`);
+    }
+  }
 }
 
 
@@ -84,10 +114,10 @@ export class MarketClient extends BaseClient {
 // import { RestAPIUrl } from "../enums";
 // async function main() {
 //   const client = new MarketClient(accountInfo, RestAPIUrl.mainnet);
-//   const trades = await client.getMarketTrades('PERP_TON_USDC');
+//   const trades = await client.getKline('PERP_TON_USDC','1m');
 //   const prices = trades.data.rows
-//         .slice(0, 50)
-//         .map((trade) => trade.executed_price);
+//         .slice(0, 10)
+//         .map((trade) => trade.close);
 //   console.log(trades.data);
 //   console.log(prices);
 // }

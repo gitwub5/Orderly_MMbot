@@ -8,12 +8,12 @@ import { accountInfo } from "../../utils/account";
 
 //Get the current summary of user token holdings.
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-current-holding
-export async function getCurrentHolding(account: account, url: string): Promise<BalanceResponse>{
+export async function getCurrentHolding(): Promise<BalanceResponse>{
     try{
         const response = await signAndSendRequest(
-            account.accountId,
-            account.privateKey,
-            `${url}/v1/client/holding`
+            accountInfo.accountId,
+            accountInfo.privateKey,
+            `${RestAPIUrl.mainnet}/v1/client/holding`
         );
         const json = await response.json();
         return json;
@@ -37,12 +37,12 @@ export async function getCurrentHolding(account: account, url: string): Promise<
 // });
 
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-one-position-info
-export async function getOnePosition(account: account, url: string, symbol: string){
+export async function getOnePosition( symbol: string){
     try {
         const response = await signAndSendRequest(
-            account.accountId,
-            account.privateKey,
-            `${url}/v1/position/${symbol}`
+            accountInfo.accountId,
+            accountInfo.privateKey,
+            `${RestAPIUrl.mainnet}/v1/position/${symbol}`
         );
         const json = await response.json();
         return json;
@@ -64,14 +64,30 @@ export async function getOnePosition(account: account, url: string, symbol: stri
 //   console.error('Unhandled error in main function:', error);
 // });
 
+//https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-one-position-info
+export async function getAllPositions(){
+    try {
+        const response = await signAndSendRequest(
+            accountInfo.accountId,
+            accountInfo.privateKey,
+            `${RestAPIUrl.mainnet}/v1/positions`
+        );
+        const json = await response.json();
+        return json;
+    } catch(error){
+        console.error('Error - Get One Position :', error);
+        throw error;
+    }
+}
+
 //모든 Open Orders(의 orderId) 가져오기
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-orders
-export async function getOpenOrders(account: account, url: string): Promise<OrderResponse> {
+export async function getOpenOrders(): Promise<OrderResponse> {
     try{
         const res = await signAndSendRequest(
-            account.accountId,
-            account.privateKey,
-        `${url}/v1/orders?status=INCOMPLETE`,
+            accountInfo.accountId,
+            accountInfo.privateKey,
+        `${RestAPIUrl.mainnet}/v1/orders?status=INCOMPLETE`,
         {
             method : 'GET',
         }
@@ -258,19 +274,19 @@ export async function getFundingFeeHis(
 
 // https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-user-daily-volume
 export async function getDailyVolume(
-    start_t: Date,
-    end_t: Date
+    start_date: string,
+    end_date: string
 ): Promise<any> {
     try {
-        // 쿼리 파라미터 객체 생성
+        // 쿼리 파라미터 객체 생성 (Date Format YYYY-MM-DD)
         const query: Record<string, string> = {
-            start_t: formatDate(start_t),
-            end_t: formatDate(end_t)
+            start_date: start_date,
+            end_date: end_date
         };
 
         // Query string 생성
         const queryString = new URLSearchParams(query).toString();
-        const url = `${RestAPIUrl.mainnet}/v1/volum/user/daily${queryString ? `?${queryString}` : ''}`;
+        const url = `${RestAPIUrl.mainnet}/v1/volume/user/daily${queryString ? `?${queryString}` : ''}`;
 
         const res = await signAndSendRequest(
             accountInfo.accountId,
@@ -281,13 +297,24 @@ export async function getDailyVolume(
             }
         );
         const json = await res.json();
-        console.log(json)
+        //console.log(json)
         return json;
     } catch (error) {
         console.error('Error checking orders info:', error);
         throw error;
     }
 }
+
+// async function main() {
+//     try {
+//         getDailyVolume('2024-07-29','2024-07-31');
+//     } catch (error) {
+//         console.error('Error in main function:', error);
+//     }
+// }
+// main().catch(error => {
+//   console.error('Unhandled error in main function:', error);
+// });
 
 //Get user daily statistics of assets/pnl/volume.
 //당일날 데이터는 못 가져옴(입력값 없으면 전날 데이터만 가져옴)

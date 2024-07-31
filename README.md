@@ -40,7 +40,7 @@
 스프레드를 동적으로 조정하는 함수입니다. 자산 가격의 분산과 시장 메이커의 리스크 회피 계수를 기반으로 스프레드를 계산합니다.
 ```typescript
 function calculateOptimalSpread(stdDev: number, T: number, t: number, gamma: number, k: number): number {
-    return gamma * Math.pow(stdDev, 2) * (T - t) + (gamma / k) * Math.log(1 + (gamma / k));
+     return gamma * Math.pow(stdDev, 2) * (T - t) + (2 / gamma) * Math.log(1 + (gamma / k));
 }
 ```
 

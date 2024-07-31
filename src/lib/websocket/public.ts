@@ -125,6 +125,15 @@ export class WebSocketManager {
     };
     this.unsubscribe(submessage);
   }
+
+  async ticker(symbol : string){
+    const submessage = {
+      id: `id-24h_ticker`,
+      topic: `${symbol}@ticker`,
+      event: "subscribe",
+    };
+    this.sendSubscription(submessage);
+  }
 }
 
 // // TEST

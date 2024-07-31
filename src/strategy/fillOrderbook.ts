@@ -1,6 +1,6 @@
 import { MainClient } from "../client/main.client";
 import { fixPrecision } from "../utils/fixPrecision";
-import { StrategyConfig } from "./stratgyConfig";
+import { StrategyConfig } from "./strategyConfig";
 
 // 오더북을 채우는 함수
 export async function fillOrderBook(client: MainClient, config: StrategyConfig) {
