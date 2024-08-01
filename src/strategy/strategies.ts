@@ -7,9 +7,9 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_TON_USDC': {
         symbol: 'PERP_TON_USDC',
         precision: 4,
-        orderQuantity: 10,
+        orderQuantity: 15,
         tradePeriodMs: 10000,
-        stdDevPeriod: 15,
+        stdDevPeriod: 10,
         orderLevels: 5,
         orderSpacing: 0.02, // (0.01~0.1)
         takeProfitRatio: 0.03,
