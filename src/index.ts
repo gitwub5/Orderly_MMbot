@@ -7,15 +7,19 @@ import { spreadOrder } from './strategy/spreadOrder';
 import { strategies } from './strategy/strategies';
 import { startPeriodicMessages } from './utils/telegram/telegramBot';
 import { stopFlag } from './globals';
+import { createLogger } from './utils/logger/logger';
 
 // 전략 실행 함수
 async function executeStrategy(config: StrategyConfig) {
     const client = new MainClient(accountInfo, RestAPIUrl.mainnet);
     const { symbol, tradePeriodMs } = config;
 
+    const token = symbol.split('_')[1];
+    const logger = createLogger(token);
+
     // Ctrl+C 이벤트 핸들러
     process.on('SIGINT', async () => {
-        console.log(`Caught interrupt signal (SIGINT) for ${symbol}, canceling all orders and closing positions...`);
+        logger.info(`Caught interrupt signal (SIGINT) for ${symbol}, canceling all orders and closing positions...`);
         await cancelAllOrdersAndClosePositions(client, symbol);
         process.exit();
     });
@@ -24,14 +28,14 @@ async function executeStrategy(config: StrategyConfig) {
     const runStrategy = async () => {
         try {
             if (stopFlag) {
-                console.log(`Trading for ${symbol} has been stopped.`);
+                logger.info(`Trading for ${symbol} has been stopped.`);
                 return;
             }
-            console.log(`Running market making strategy for ${symbol}...`);
-            await spreadOrder(client, config);
+            logger.info(`Running market making strategy for ${symbol}...`);
+            await spreadOrder(client, config, logger);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-            console.error(`Error during strategy execution for ${symbol}: ${errorMessage}`);
+            logger.error(`Error during strategy execution for ${symbol}: ${errorMessage}`);
         } finally {
             if (!stopFlag) {
                 setTimeout(runStrategy, tradePeriodMs);
@@ -44,7 +48,7 @@ async function executeStrategy(config: StrategyConfig) {
         await runStrategy();
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        console.error(`Strategy execution failed for ${symbol}: ${errorMessage}`);
+        logger.error(`Strategy execution failed for ${symbol}: ${errorMessage}`);
     }
 }
 

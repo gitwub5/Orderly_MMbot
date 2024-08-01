@@ -1,5 +1,70 @@
 import { account } from "../../interfaces/account";
 import { signAndSendRequest } from './signer'
+import { accountInfo } from "../../utils/account";
+import { RestAPIUrl } from "../../enums";
+
+async function testPlaceOrder(
+  symbol: string,
+  orderType: string,
+  side: string,
+  price: number | null,
+  amount: number,
+  option?: RequestInit | undefined
+) {
+  try {
+    // Base body with required properties
+    const body: Record<string, any> = {
+      symbol: symbol,
+      order_type: orderType,
+      side: side,
+      order_quantity: amount,
+    };
+
+    // Add price if order type is LIMIT
+    if (orderType === "LIMIT") {
+      body.order_price = price;
+    }
+
+    // Add additional properties from init body if they exist
+    if (option?.body) {
+      const additionalProps = JSON.parse(option.body as string);
+      Object.assign(body, additionalProps);
+    }
+
+    const response = await signAndSendRequest(
+      accountInfo.accountId,
+      accountInfo.privateKey,
+      `${RestAPIUrl.mainnet}/v1/order`,
+      {
+        method: "POST",
+        body: JSON.stringify(body)
+      }
+    );
+
+    const json = await response.json();
+    console.log('Orderly Order Response:', JSON.stringify(json, undefined, 2));
+    return json;
+  } catch (error) {
+    throw new Error(`Error - Place Order: ${error}`);
+  }
+}
+
+
+// async function main() {
+//     try {
+//       const init: RequestInit = {
+//         body: JSON.stringify({
+//           level: 2,
+//         })}
+//       testPlaceOrder('PERP_LINK_USDC',  'BID', 'BUY', null ,1, init);
+//     } catch (error) {
+//         console.error('Error in main function:', error);
+//     }
+// }
+// main().catch(error => {
+//   console.error('Unhandled error in main function:', error);
+// });
+
 
 export class placeOrder {
   private static async placeOrder(

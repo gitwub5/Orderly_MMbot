@@ -12,7 +12,8 @@ export class OrderClient extends BaseClient {
     orderType: string,
     side: string,
     price: number | null,
-    amount: number
+    amount: number,
+    option?: RequestInit | undefined
   ): Promise<OrderResponse> {
     try {
       const body: Record<string, any> = {
@@ -24,6 +25,12 @@ export class OrderClient extends BaseClient {
 
       if (orderType === "LIMIT") {
         body.order_price = price;
+      }
+
+      // Add additional properties from init body if they exist
+      if (option?.body) {
+        const additionalProps = JSON.parse(option.body as string);
+        Object.assign(body, additionalProps);
       }
 
       const response = await this.signAndSendRequest(

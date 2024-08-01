@@ -3,57 +3,52 @@ import { calculateOptimalSpread, adjustMidPrice, adjustPositionSize, adjustOrder
 import { StrategyConfig } from "./strategyConfig";
 import { fixPrecision } from "../utils/fixPrecision";
 import { riskManagement } from "./riskManagement";
+import winston from 'winston';
 
 // 매수 및 매도 주문을 배치하는 함수
-export async function spreadOrder(client: MainClient, config: StrategyConfig) {
+export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
     const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k, stdDevThreshold } = config;
 
     //주문 전부 취소 (주문 취소도 변경 고려)
-    console.log('Canceling all existing orders...');
+    logger.info('Canceling all existing orders...');
     await client.cancelAllOrders(symbol);
 
     //시장 최근 거래값 불러오기
-    console.log('Retrieving market trades...');
     const tickerData = await client.getKline(symbol, '1m');
     const lastPrice = tickerData.data.rows[0].close;
-    console.log('Last executed price:', lastPrice);
+    logger.info('Last executed price:', lastPrice);
     //<<tickerData 값을 오더북의 평균값으로 수정 고려>>
 
     //포지션 값 불러오기 + Risk Management
-    console.log('Retrieving open position...');
     const openPosition = await client.getOnePosition(config.symbol);
     //openPosition값으로 pnl 비율 계산 -> 만약 손실갭 넘었을 시에는 수량만큼 ask나 bid 주문 걸어버리기
-    const position_qty = await riskManagement(client, config, openPosition);
+    await riskManagement(client, config, logger, openPosition);
     // +ask나 bid로 주문이 빠르고 자주 체결되는 지 확인 + rebate 받는지도 확인
-    console.log('Open position quantity:', position_qty);
+    const position_qty = openPosition.data.position_qty;
+    logger.info('Open position quantity:', position_qty);
 
     //표준편차 가져오기 (TODO: 표준편차 제대로 가져오는지 확인)
-    console.log('Calculating standard deviation...');
     const stdDev = await client.getStandardDeviation(symbol, stdDevPeriod);
-    console.log('Standard deviation:', stdDev);
+    logger.info('Standard deviation:', stdDev);
 
     //방법 #1
     const T = 1;
     const t = 0;
 
     //최적 스프레드 값 구하기
-    console.log('Calculating optimal spread...');
     const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
-    console.log('Optimal spread:', optimalSpread);
+    logger.info('Optimal spread:', optimalSpread);
 
     //중립값 구하기
-    console.log('Adjusting mid price...');
     const neutralPrice = await adjustMidPrice(lastPrice, position_qty, stdDev, T, t, gamma);
-    console.log('Neutral price:', neutralPrice);
-
-    
+    logger.info('Neutral price:', neutralPrice);
 
     // 주문 간격 조정
     const dynamicOrderSpacing = await adjustOrderSpacing(orderSpacing, stdDev, stdDevThreshold);
     // 주문 수량 조정 (사용 보류)
     //const orderQuantity = await adjustPositionSize(orderQuantity, stdDev, stdDevThreshold);
 
-    console.log('Placing orders...');
+    logger.info('Placing orders...');
     let netPosition = position_qty;
     let buyOrderSpacing = dynamicOrderSpacing;
     let sellOrderSpacing = dynamicOrderSpacing;
@@ -79,12 +74,12 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
         const stopLossPrice = neutralPrice * (1 - stopLossRatio);
         
         //const orderQuantity = await calculateOrderQuantity(orderQuantity, level);
-        console.log(`Level ${level} - Bid Price: ${bidPrice}, Ask Price: ${askPrice}, Order Quantity: ${orderQuantity}`);
+        logger.info(`Level ${level} - Bid Price: ${bidPrice}, Ask Price: ${askPrice}, Order Quantity: ${orderQuantity}`);
 
         if (netPosition <= 0) { // Only place buy orders if net position is non-positive
             if (stopLossPrice < bidPrice && bidPrice < takeProfitPrice) {
                 if (bidPrice * orderQuantity > 10) {
-                    console.log(`Placing BUY order - Price: ${bidPrice}, Quantity: ${orderQuantity}`);
+                    logger.info(`Placing BUY order - Price: ${bidPrice}, Quantity: ${orderQuantity}`);
                     await client.placeOrder(symbol, 'LIMIT', 'BUY', bidPrice, orderQuantity);
                     netPosition += orderQuantity; // Adjust net position
                 }
@@ -94,7 +89,7 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
         if (netPosition >= 0) { // Only place sell orders if net position is non-negative
             if (stopLossPrice < askPrice && askPrice < takeProfitPrice) {
                 if (askPrice * orderQuantity > 10) {
-                    console.log(`Placing SELL order - Price: ${askPrice}, Quantity: ${orderQuantity}`);
+                    logger.info(`Placing SELL order - Price: ${askPrice}, Quantity: ${orderQuantity}`);
                     await client.placeOrder(symbol, 'LIMIT', 'SELL', askPrice, orderQuantity);
                     netPosition -= orderQuantity; // Adjust net position
                 }
