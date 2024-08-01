@@ -2,22 +2,32 @@ import { MainClient } from "../client/main.client";
 import { calculateOptimalSpread, adjustMidPrice, adjustPositionSize, adjustOrderSpacing, calculateOrderQuantity, setBidAskPrices } from "./functions";
 import { StrategyConfig } from "./strategyConfig";
 import { fixPrecision } from "../utils/fixPrecision";
+import { riskManagement } from "./riskManagement";
 
 // 매수 및 매도 주문을 배치하는 함수
 export async function spreadOrder(client: MainClient, config: StrategyConfig) {
     const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k, stdDevThreshold } = config;
 
+    //주문 전부 취소 (주문 취소도 변경 고려)
+    console.log('Canceling all existing orders...');
+    await client.cancelAllOrders(symbol);
+
+    //시장 최근 거래값 불러오기
     console.log('Retrieving market trades...');
     const tickerData = await client.getKline(symbol, '1m');
-    //tickerData 값을 오더북의 평균값으로 하는 것은 어떨지
-
-    console.log('Retrieving open position...');
-    const openPosition = (await client.getOnePosition(config.symbol)).data.position_qty;
-    console.log('Open position:', openPosition);
-
     const lastPrice = tickerData.data.rows[0].close;
     console.log('Last executed price:', lastPrice);
+    //<<tickerData 값을 오더북의 평균값으로 수정 고려>>
 
+    //포지션 값 불러오기 + Risk Management
+    console.log('Retrieving open position...');
+    const openPosition = await client.getOnePosition(config.symbol);
+    //openPosition값으로 pnl 비율 계산 -> 만약 손실갭 넘었을 시에는 수량만큼 ask나 bid 주문 걸어버리기
+    const position_qty = await riskManagement(client, config, openPosition);
+    // +ask나 bid로 주문이 빠르고 자주 체결되는 지 확인 + rebate 받는지도 확인
+    console.log('Open position quantity:', position_qty);
+
+    //표준편차 가져오기 (TODO: 표준편차 제대로 가져오는지 확인)
     console.log('Calculating standard deviation...');
     const stdDev = await client.getStandardDeviation(symbol, stdDevPeriod);
     console.log('Standard deviation:', stdDev);
@@ -26,24 +36,25 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
     const T = 1;
     const t = 0;
 
+    //최적 스프레드 값 구하기
     console.log('Calculating optimal spread...');
     const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
     console.log('Optimal spread:', optimalSpread);
 
+    //중립값 구하기
     console.log('Adjusting mid price...');
-    const neutralPrice = await adjustMidPrice(lastPrice, openPosition, stdDev, T, t, gamma);
+    const neutralPrice = await adjustMidPrice(lastPrice, position_qty, stdDev, T, t, gamma);
     console.log('Neutral price:', neutralPrice);
 
-    console.log('Canceling all existing orders...');
-    await client.cancelAllOrders(symbol);
+    
 
-    // 주문 간격 조정 (TODO: 토큰별 Thershold값 정해야함)
+    // 주문 간격 조정
     const dynamicOrderSpacing = await adjustOrderSpacing(orderSpacing, stdDev, stdDevThreshold);
-    // 주문 수량 조정 (TODO: 토큰별 Thershold값 정해야함)
+    // 주문 수량 조정 (사용 보류)
     //const orderQuantity = await adjustPositionSize(orderQuantity, stdDev, stdDevThreshold);
 
     console.log('Placing orders...');
-    let netPosition = openPosition;
+    let netPosition = position_qty;
     let buyOrderSpacing = dynamicOrderSpacing;
     let sellOrderSpacing = dynamicOrderSpacing;
 
@@ -64,8 +75,8 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
         let bidPrice = fixPrecision(neutralPrice - buyPriceOffset, config.precision);
         let askPrice = fixPrecision(neutralPrice + sellPriceOffset, config.precision);
 
-        const takeProfitPrice = lastPrice * (1 + takeProfitRatio);
-        const stopLossPrice = lastPrice * (1 - stopLossRatio);
+        const takeProfitPrice = neutralPrice * (1 + takeProfitRatio);
+        const stopLossPrice = neutralPrice * (1 - stopLossRatio);
         
         //const orderQuantity = await calculateOrderQuantity(orderQuantity, level);
         console.log(`Level ${level} - Bid Price: ${bidPrice}, Ask Price: ${askPrice}, Order Quantity: ${orderQuantity}`);
@@ -92,4 +103,11 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig) {
     }
 }
 
-//TODO: PnL 불러오는 함수 -> 손실이(ex:1%) 발생하면 현재 포지션 개수만큼 전부 지정가 걸어버려서 탈출하는 방법
+//OrderType: ask, bid이랑 level값으로 주문하는 함수
+// ASK type order behavior: the order price is guranteed to be the best ask price of the orderbook at the time it gets accepted.
+// BID type order behavior: the order price is guranteed to be the best bid price of the orderbook at the time it gets accepted.
+//level: Integer value from 0 to 4. This parameter controls wether to present the price of bid0 to bid4 or ask0 to ask4. Only allowed when order_type is BID or ASK.
+//https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/create-order
+async function spreadAskBidOrder(){
+
+}

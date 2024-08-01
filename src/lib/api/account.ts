@@ -37,7 +37,7 @@ export async function getCurrentHolding(): Promise<BalanceResponse>{
 // });
 
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-one-position-info
-export async function getOnePosition( symbol: string){
+export async function getOnePosition(symbol: string){
     try {
         const response = await signAndSendRequest(
             accountInfo.accountId,
@@ -54,7 +54,7 @@ export async function getOnePosition( symbol: string){
 
 // async function main() {
 //     try {
-//         const res = await getOnePosition(accountInfo, RestAPIUrl.mainnet, 'PERP_TON_USDC');
+//         const res = await getOnePosition('PERP_TON_USDC');
 //         console.log(res.data);
 //     } catch (error) {
 //         console.error('Error in main function:', error);
@@ -297,7 +297,7 @@ export async function getDailyVolume(
             }
         );
         const json = await res.json();
-        //console.log(json)
+        console.log(json)
         return json;
     } catch (error) {
         console.error('Error checking orders info:', error);
@@ -307,7 +307,7 @@ export async function getDailyVolume(
 
 // async function main() {
 //     try {
-//         getDailyVolume('2024-07-29','2024-07-31');
+//         getDailyVolume('2024-07-31','2024-08-01');
 //     } catch (error) {
 //         console.error('Error in main function:', error);
 //     }
