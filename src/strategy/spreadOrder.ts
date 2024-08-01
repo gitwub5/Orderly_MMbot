@@ -14,11 +14,17 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     logger.info('Canceling all existing orders...');
     await client.cancelAllOrders(symbol);
 
-    //시장 최근 거래값 불러오기
-    const tickerData = await client.getKline(symbol, '1m');
-    const lastPrice = tickerData.data.rows[0].close;
+    //시장 최근 거래값 불러오기 : 1분 Kline의 close 값
+    // const tickerData = await client.getKline(symbol, '1m');
+    // const lastPrice = tickerData.data.rows[0].close;
+
+     //시장 최근 거래값 불러오기2: 오더북의 평균값
+    const {bid, ask} = await client.getOrderBookSpread(symbol);
+    const lastPrice = (bid + ask) / 2;
     logger.info(`Last executed price: ${lastPrice}`);
-    //<<tickerData 값을 오더북의 평균값으로 수정 고려>>
+   
+    
+
 
     //포지션 값 불러오기 + Risk Management
     const openPosition = await client.getOnePosition(config.symbol);
