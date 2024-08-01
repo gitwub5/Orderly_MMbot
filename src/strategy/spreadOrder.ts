@@ -5,6 +5,7 @@ import { fixPrecision } from "../utils/fixPrecision";
 import { riskManagement } from "./riskManagement";
 import winston from 'winston';
 
+// TODO: 추가 전략 구상 -> 짧게 먹고 나오는 방법 (체결되면 바로 ASK, BID로 조금만 먹고 런하기)
 // 매수 및 매도 주문을 배치하는 함수
 export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
     const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k, stdDevThreshold } = config;
@@ -16,7 +17,7 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     //시장 최근 거래값 불러오기
     const tickerData = await client.getKline(symbol, '1m');
     const lastPrice = tickerData.data.rows[0].close;
-    logger.info('Last executed price:', lastPrice);
+    logger.info(`Last executed price: ${lastPrice}`);
     //<<tickerData 값을 오더북의 평균값으로 수정 고려>>
 
     //포지션 값 불러오기 + Risk Management
@@ -25,11 +26,11 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     await riskManagement(client, config, logger, openPosition);
     // +ask나 bid로 주문이 빠르고 자주 체결되는 지 확인 + rebate 받는지도 확인
     const position_qty = openPosition.data.position_qty;
-    logger.info('Open position quantity:', position_qty);
+    logger.info(`Open position quantity: ${position_qty}`);
 
     //표준편차 가져오기 (TODO: 표준편차 제대로 가져오는지 확인)
     const stdDev = await client.getStandardDeviation(symbol, stdDevPeriod);
-    logger.info('Standard deviation:', stdDev);
+    logger.info(`Standard deviation: ${stdDev}`);
 
     //방법 #1
     const T = 1;
@@ -37,11 +38,11 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
 
     //최적 스프레드 값 구하기
     const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
-    logger.info('Optimal spread:', optimalSpread);
+    logger.info(`Optimal spread: ${optimalSpread}`);
 
     //중립값 구하기
     const neutralPrice = await adjustMidPrice(lastPrice, position_qty, stdDev, T, t, gamma);
-    logger.info('Neutral price:', neutralPrice);
+    logger.info(`Neutral price: ${neutralPrice}`);
 
     // 주문 간격 조정
     const dynamicOrderSpacing = await adjustOrderSpacing(orderSpacing, stdDev, stdDevThreshold);
@@ -54,11 +55,11 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     let sellOrderSpacing = dynamicOrderSpacing;
 
     if (netPosition < 0) { // If net short, increase sell order spacing
-        sellOrderSpacing *= 1.5;
-        buyOrderSpacing *= 0.5;
+        sellOrderSpacing *= 1.666;
+        buyOrderSpacing *= 0.333;
     } else if (netPosition > 0) { // If net long, increase buy order spacing
-        buyOrderSpacing *= 1.5;
-        sellOrderSpacing *= 0.5;
+        buyOrderSpacing *= 1.666;
+        sellOrderSpacing *= 0.333;
     }
    
     for (let level = 1; level <= orderLevels; level++) {
@@ -104,5 +105,5 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
 //level: Integer value from 0 to 4. This parameter controls wether to present the price of bid0 to bid4 or ask0 to ask4. Only allowed when order_type is BID or ASK.
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/create-order
 async function spreadAskBidOrder(){
-
+    //전략 2: ASK랑 BID로 위 아래로 걸어서 계속 거래 발생시키는 방법
 }
