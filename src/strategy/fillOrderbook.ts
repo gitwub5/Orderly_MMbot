@@ -1,9 +1,10 @@
 import { MainClient } from "../client/main.client";
 import { fixPrecision } from "../utils/fixPrecision";
 import { StrategyConfig } from "./strategyConfig";
+import winston from 'winston';
 
 // 오더북을 채우는 함수
-export async function fillOrderBook(client: MainClient, config: StrategyConfig) {
+export async function fillOrderBook(client: MainClient, config: StrategyConfig, logger: winston.Logger ) {
     const { symbol, orderQuantity, orderLevels, orderSpacing } = config;
 
     console.log('Retrieving market trades...');

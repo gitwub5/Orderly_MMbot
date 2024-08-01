@@ -76,9 +76,10 @@ export class MainClient {
     orderType: string,
     side: string,
     price: number | null,
-    amount: number
+    amount: number,
+    option?: RequestInit | undefined
   ): Promise<Interfaces.OrderResponse> {
-    return this.orderClient.placeOrder(symbol, orderType, side, price, amount);
+    return this.orderClient.placeOrder(symbol, orderType, side, price, amount, option);
   }
 
   public async cancelOrder(
