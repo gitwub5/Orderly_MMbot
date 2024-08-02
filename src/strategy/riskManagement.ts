@@ -41,6 +41,9 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
     const position_qty = openPosition.data.position_qty;
 
     if(position_qty !== 0){
+        // logger.info(`Risk Management execute`);
+        // await placeAskBidOrder(client, config.symbol, position_qty);
+
         //현재 포지션 pnl 계산
         const pnlPercentage = await calculatePnLPercentage(openPosition);
         logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);

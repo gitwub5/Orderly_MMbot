@@ -22,7 +22,7 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_LINK_USDC': {
         symbol: 'PERP_LINK_USDC',
         precision: 3,
-        orderQuantity: 15,
+        orderQuantity: 20,
         tradePeriodMs: 5000,
         stdDevPeriod: 40,
         orderLevels: 3,
@@ -30,14 +30,14 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.02,
         stopLossRatio: 0.02,
         gamma: 0.5,
-        k: 5,
+        k: 3.5,
         stdDevThreshold: 0.002,
     },
 
     'PERP_SOL_USDC': {
         symbol: 'PERP_SOL_USDC',
         precision: 3,
-        orderQuantity: 0.5,
+        orderQuantity: 1,
         tradePeriodMs: 5000,
         stdDevPeriod: 50,
         orderLevels: 3,
@@ -45,14 +45,14 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.02,
         stopLossRatio: 0.02,
         gamma: 0.5,
-        k: 1,
+        k: 0.7,
         stdDevThreshold: 0.05,
     },
 
     'PERP_DOGE_USDC': {
         symbol: 'PERP_DOGE_USDC',
         precision: 5,
-        orderQuantity: 300,
+        orderQuantity: 1000,
         tradePeriodMs: 5000,
         stdDevPeriod: 50,
         orderLevels: 3,
@@ -60,8 +60,8 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.02,
         stopLossRatio: 0.02,
         gamma: 0.2,
-        k: 150,
-        stdDevThreshold: 0.05,
+        k: 120,
+        stdDevThreshold: 0.00003,
     },
 
 };

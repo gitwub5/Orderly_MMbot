@@ -13,7 +13,7 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     logger.info('Canceling all existing orders...');
     await client.cancelAllOrders(symbol);
 
-    //시장 최근 거래값 불러오기 : 1분 Kline의 close 값
+    //시장 최근 거래값 불러오기1 : 1분 Kline의 close 값
     // const tickerData = await client.getKline(symbol, '1m');
     // const lastPrice = tickerData.data.rows[0].close;
 
@@ -22,9 +22,6 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     const lastPrice = (bid + ask) / 2;
     logger.info(`Last executed price: ${lastPrice}`);
    
-    
-
-
     //포지션 값 불러오기 + Risk Management
     const openPosition = await client.getOnePosition(config.symbol);
     //openPosition값으로 pnl 비율 계산 -> 만약 손실갭 넘었을 시에는 수량만큼 ask나 bid 주문 걸어버리기
@@ -109,6 +106,31 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
 // BID type order behavior: the order price is guranteed to be the best bid price of the orderbook at the time it gets accepted.
 //level: Integer value from 0 to 4. This parameter controls wether to present the price of bid0 to bid4 or ask0 to ask4. Only allowed when order_type is BID or ASK.
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/create-order
-async function spreadAskBidOrder(){
+export async function spreadAskBidOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger){
     //전략 2: ASK랑 BID로 위 아래로 걸어서 계속 거래 발생시키는 방법
+    const { symbol, orderQuantity, orderLevels } = config;
+
+    logger.info('Canceling all existing orders...');
+    await client.cancelAllOrders(symbol);
+
+    const {bid, ask} = await client.getOrderBookSpread(symbol);
+    const lastPrice = (bid + ask) / 2;
+    logger.info(`Last executed price: ${lastPrice}`);
+
+    //포지션 값 불러오기 + Risk Management
+    const openPosition = await client.getOnePosition(config.symbol);
+    //openPosition값으로 pnl 비율 계산 -> 만약 손실갭 넘었을 시에는 수량만큼 ask나 bid 주문 걸어버리기
+    await riskManagement(client, config, logger, openPosition);
+
+    if(openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * lastPrice) < 10){
+        for (let level = 0; level <= orderLevels; level++) {
+            await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
+                body: JSON.stringify({'level': level})
+            });
+            
+            await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
+                body: JSON.stringify({'level': level})
+            });
+        }
+    }
 }
