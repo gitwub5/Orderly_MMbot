@@ -41,23 +41,23 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
     const position_qty = openPosition.data.position_qty;
 
     if(position_qty !== 0){
-        // logger.info(`Risk Management execute`);
-        // await placeAskBidOrder(client, config.symbol, position_qty);
+        logger.info(`Risk Management execute`);
+        await placeAskBidOrder(client, config.symbol, position_qty);
 
-        //현재 포지션 pnl 계산
-        const pnlPercentage = await calculatePnLPercentage(openPosition);
-        logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
+    //     //현재 포지션 pnl 계산
+    //     const pnlPercentage = await calculatePnLPercentage(openPosition);
+    //     logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
 
-        //만약 pnl이 음수이고, stopLossRatio보다 같거나 커지면 탈출
-        if(pnlPercentage < 0 && Math.abs(pnlPercentage) >= config.stopLossRatio){
-            logger.info(`LOSS Risk Management execute`);
-            await placeAskBidOrder(client, config.symbol, position_qty);
-        }
+    //     //만약 pnl이 음수이고, stopLossRatio보다 같거나 커지면 탈출
+    //     if(pnlPercentage < 0 && Math.abs(pnlPercentage) >= config.stopLossRatio){
+    //         logger.info(`LOSS Risk Management execute`);
+    //         await placeAskBidOrder(client, config.symbol, position_qty);
+    //     }
 
-        //만약 pnl이 양수이고, takeProfitRatio보다 같거나 커지면 탈출
-        if(pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
-            logger.info(`TAKE Risk Management execute`);
-            await placeAskBidOrder(client, config.symbol, position_qty);
-        }
+    //     //만약 pnl이 양수이고, takeProfitRatio보다 같거나 커지면 탈출
+    //     if(pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
+    //         logger.info(`TAKE Risk Management execute`);
+    //         await placeAskBidOrder(client, config.symbol, position_qty);
+    //     }
     }
 }
