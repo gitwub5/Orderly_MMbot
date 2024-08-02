@@ -20,8 +20,7 @@ async function testPlaceOrder(
       order_quantity: amount,
     };
 
-    // Add price if order type is LIMIT
-    if (orderType === "LIMIT") {
+    if (orderType !== "MARKET" && orderType !== "ASK" && orderType !== "BID") {
       body.order_price = price;
     }
 
@@ -52,11 +51,11 @@ async function testPlaceOrder(
 
 // async function main() {
 //     try {
-//       const init: RequestInit = {
-//         body: JSON.stringify({
-//           level: 2,
-//         })}
-//       testPlaceOrder('PERP_LINK_USDC',  'BID', 'BUY', null ,1, init);
+//       // const init: RequestInit = {
+//       //   body: JSON.stringify({
+//       //     level: 2,
+//       //   })}
+//       testPlaceOrder('PERP_LINK_USDC', 'LIMIT', 'BUY', 12.686 ,1);
 //     } catch (error) {
 //         console.error('Error in main function:', error);
 //     }

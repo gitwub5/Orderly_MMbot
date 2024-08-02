@@ -23,7 +23,7 @@ export class OrderClient extends BaseClient {
         order_quantity: amount,
       };
 
-      if (orderType === "LIMIT") {
+      if (orderType !== "MARKET" && orderType !== "ASK" && orderType !== "BID") {
         body.order_price = price;
       }
 

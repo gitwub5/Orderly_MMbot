@@ -5,7 +5,6 @@ import { fixPrecision } from "../utils/fixPrecision";
 import { riskManagement } from "./riskManagement";
 import winston from 'winston';
 
-// TODO: 추가 전략 구상 -> 짧게 먹고 나오는 방법 (체결되면 바로 ASK, BID로 조금만 먹고 런하기)
 // 매수 및 매도 주문을 배치하는 함수
 export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
     const { symbol, orderQuantity, stdDevPeriod, orderLevels, orderSpacing, takeProfitRatio, stopLossRatio, gamma, k, stdDevThreshold } = config;
