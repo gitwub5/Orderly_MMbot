@@ -11,11 +11,11 @@ export const strategies: Record<string, StrategyConfig> = {
         tradePeriodMs: 5000,
         stdDevPeriod: 5,
         orderLevels: 3,
-        orderSpacing: 0.01, // (0.01~0.1)
+        orderSpacing: 0.015, // (0.01~0.1)
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
         gamma: 0.5, // 낮은 값은 더 많은 리스크를 감수하고, 높은 값은 리스크를 줄이는 경향 (0.01~0.5)
-        k: 5.8,  // 시장의 변동성과 거래 빈도에 따라 조정 (1~10)
+        k: 5,  // 시장의 변동성과 거래 빈도에 따라 조정 (1~10)
         stdDevThreshold: 0.002,
     },
     
@@ -30,7 +30,7 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
         gamma: 0.5,
-        k: 6,
+        k: 2,
         stdDevThreshold: 0.002,
     },
 
@@ -45,7 +45,7 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
         gamma: 0.5,
-        k: 1,
+        k: 0.25,
         stdDevThreshold: 0.05,
     },
 
@@ -56,7 +56,7 @@ export const strategies: Record<string, StrategyConfig> = {
         tradePeriodMs: 5000,
         stdDevPeriod: 50,
         orderLevels: 3,
-        orderSpacing: 0.01,
+        orderSpacing: 0.02,
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
         gamma: 0.4,
