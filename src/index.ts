@@ -3,7 +3,7 @@ import { RestAPIUrl } from './enums';
 import { accountInfo } from './utils/account';
 import { StrategyConfig } from './strategy/strategyConfig';
 import { cancelAllOrdersAndClosePositions } from './strategy/closePosition';
-import { spreadOrder } from './strategy/spreadOrder';
+import { spreadOrder,spreadAskBidOrder } from './strategy/spreadOrder';
 import { strategies } from './strategy/strategies';
 import { startPeriodicMessages } from './utils/telegram/telegramBot';
 import { stopFlag } from './globals';

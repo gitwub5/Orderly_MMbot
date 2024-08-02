@@ -4,7 +4,5 @@ export * from './order-type.enum';
 export * from './rest-api-error-code.enum';
 export * from './rest-api-url.enum';
 export * from './rest-api-version.enum';
-export * from './transaction-side.enum';
-export * from './transaction-status.enum';
 export * from './ws-private-url.enum';
 export * from './ws-public-url.enum';
