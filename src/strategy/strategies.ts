@@ -30,7 +30,7 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
         gamma: 0.4,
-        k: 5.5,
+        k: 5.7,
         stdDevThreshold: 0.002,
     },
 
