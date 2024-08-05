@@ -118,7 +118,7 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
 
     const openPosition = await client.getOnePosition(config.symbol);
 
-    if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * lastPrice) < 10) {
+    if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
         for (let level = 0; level < orderLevels; level++) {
             await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
                 body: JSON.stringify({ 'level': level })
@@ -132,21 +132,15 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
 
     const interval = setInterval(async () => {
         try {
-            // Fetch the latest position
             const openPosition = await client.getOnePosition(symbol);
 
-            // Run risk management and check if it triggered an exit
-            const shouldExit = await riskManagement(client, config, logger, openPosition);
+            await riskManagement(client, config, logger, openPosition);
 
-            // If risk management triggered an exit, clear the interval
-            if (shouldExit) {
-                clearInterval(interval);
-            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
         }
-    }, 5000);
+    }, 2000);
 
     // Ensure the interval is cleared after the trade period ends
     setTimeout(() => clearInterval(interval), tradePeriodMs);

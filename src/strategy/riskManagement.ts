@@ -1,9 +1,8 @@
-import { getOnePosition } from "../lib/api/account";
+import winston from 'winston';
 import { PositionResponse } from "../interfaces";
 import { MainClient } from "../client/main.client";
 import { StrategyConfig } from "./strategyConfig";
-import winston from 'winston';
-import { fixPrecision } from "utils/fixPrecision";
+import { fixPrecision } from "../utils/fixPrecision";
 
 async function calculatePnLPercentage(openPosition : PositionResponse) {
     const { position_qty, mark_price, average_open_price } = openPosition.data;
@@ -95,12 +94,10 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
 
         //만약 pnl이 음수이고, stopLossRatio보다 같거나 커지면 탈출
         if( pnlPercentage < 0 
-            && config.stopLossRatio  <= Math.abs(pnlPercentage) 
-            && Math.abs(pnlPercentage) <= config.stopLossRatio * 10
+            && config.stopLossRatio * 5  <= Math.abs(pnlPercentage) 
+            && Math.abs(pnlPercentage) < config.stopLossRatio * 10
         ){
             logger.info(`LOSS Risk Management execute - Standard`);
-            //return await placeAskBidOrder(client, config.symbol, position_qty);
-            //return await placeMarketOrder(client, config.symbol, position_qty);
             return await placeLimitOrder(client, config, openPosition);
         }
 
@@ -108,13 +105,12 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
             logger.info(`LOSS Risk Management execute - Aggressive`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
             //return await placeMarketOrder(client, config.symbol, position_qty);
-            //return await placeLimitOrder(client, config.symbol, openPosition);
         }
 
-        // //만약 pnl이 양수이고, takeProfitRatio보다 같거나 커지면 탈출
-        // if(pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
-        //     logger.info(`TAKE Risk Management execute`);
-        //     return await placeAskBidOrder(client, config.symbol, position_qty);
-        // }
+        //만약 pnl이 양수이고, takeProfitRatio보다 같거나 커지면 탈출
+        if(pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
+            logger.info(`TAKE Risk Management execute`);
+            return await placeAskBidOrder(client, config.symbol, position_qty);
+        }
     }
 }
