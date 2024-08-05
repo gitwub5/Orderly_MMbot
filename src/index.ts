@@ -17,8 +17,11 @@ async function executeStrategy(config: StrategyConfig) {
     const token = symbol.split('_')[1];
     const logger = createLogger(token);
 
+    let strategyRunning = true;
+
     // Ctrl+C 이벤트 핸들러
     process.on('SIGINT', async () => {
+        strategyRunning = false;
         logger.info(`Caught interrupt signal (SIGINT) for ${symbol}, canceling all orders and closing positions...`);
         await cancelAllOrdersAndClosePositions(client, symbol);
         process.exit();
@@ -26,18 +29,19 @@ async function executeStrategy(config: StrategyConfig) {
 
     // 전략 실행 반복 함수
     const runStrategy = async () => {
+        if (!strategyRunning || stopFlag) {
+            logger.info(`Trading for ${symbol} has been stopped.`);
+            return;
+        }
+        
         try {
-            if (stopFlag) {
-                logger.info(`Trading for ${symbol} has been stopped.`);
-                return;
-            }
             logger.info(`Running market making strategy for ${symbol}...`);
-            await spreadOrder(client, config, logger);
+            await spreadAskBidOrder(client, config, logger);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during strategy execution for ${symbol}: ${errorMessage}`);
         } finally {
-            if (!stopFlag) {
+            if (strategyRunning && !stopFlag) {
                 setTimeout(runStrategy, tradePeriodMs);
             }
         }
