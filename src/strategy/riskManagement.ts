@@ -62,7 +62,7 @@ async function placeLimitOrder(client: MainClient, config: StrategyConfig, openP
 
     const position_qty = openPosition.data.position_qty;
     const average_open_price = openPosition.data.average_open_price;
-    const maxDeviation = average_open_price * 0.0002;
+    const maxDeviation = average_open_price * 0.00018;
 
     let orderPrice = average_open_price;
     if (position_qty < 0) {

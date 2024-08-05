@@ -140,7 +140,7 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
         }
-    }, 2000);
+    }, 1500);
 
     // Ensure the interval is cleared after the trade period ends
     setTimeout(() => clearInterval(interval), tradePeriodMs);

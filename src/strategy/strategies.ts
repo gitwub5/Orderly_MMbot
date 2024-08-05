@@ -22,7 +22,7 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_LINK_USDC': {
         symbol: 'PERP_LINK_USDC',
         precision: 3,
-        orderQuantity: 10,
+        orderQuantity: 15,
         tradePeriodMs: 15000,
         stdDevPeriod: 40,
         orderLevels: 1,
@@ -37,7 +37,7 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_SOL_USDC': {
         symbol: 'PERP_SOL_USDC',
         precision: 3,
-        orderQuantity: 0.3,
+        orderQuantity: 0.5,
         tradePeriodMs: 15000,
         stdDevPeriod: 50,
         orderLevels: 1,
@@ -67,7 +67,7 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_ETH_USDC': {
         symbol: 'PERP_ETH_USDC',
         precision: 2,
-        orderQuantity: 0.03,
+        orderQuantity: 0.02,
         tradePeriodMs: 15000,
         stdDevPeriod: 50,
         orderLevels: 1,
