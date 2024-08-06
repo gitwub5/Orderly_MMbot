@@ -130,18 +130,23 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
         }
     }
 
-    setTimeout(() => {
-        const interval = setInterval(async () => {
-            try {
-                const openPosition = await client.getOnePosition(symbol);
-                await riskManagement(client, config, logger, openPosition);
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-                logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
-            }
-        }, 1000);
+    await delay(10000);
 
-        // Ensure the interval is cleared after the trade period ends
-        setTimeout(() => clearInterval(interval), tradePeriodMs);
-    }, 3000); // 1 second delay to ensure initial orders are placed
+    const interval = setInterval(async () => {
+        try {
+            const openPosition = await client.getOnePosition(symbol);
+            await riskManagement(client, config, logger, openPosition);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+            logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
+        }
+    }, 2000);
+
+    // Ensure the interval is cleared after the trade period ends
+    setTimeout(() => clearInterval(interval), tradePeriodMs);
+}
+
+// 지연 시간을 주기 위한 함수
+function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }

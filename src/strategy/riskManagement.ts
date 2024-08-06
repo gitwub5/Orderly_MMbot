@@ -45,12 +45,12 @@ async function placeMarketOrder(client: MainClient, symbol: string, position_qty
     
     //만약 포지션이 음수이면 bidOrder
     if(position_qty < 0){
-        await client.placeOrder(symbol, 'LIMIT', 'BUY', null, -position_qty);
+        await client.placeOrder(symbol, 'MARKET', 'BUY', null, -position_qty);
         console.log(`Placing MARKET BUY order`);
     }
     //만약 포지션이 양수이면 askOrder
     else if(position_qty > 0){
-        await client.placeOrder(symbol, 'LIMIT', 'SELL', null, position_qty);
+        await client.placeOrder(symbol, 'MARKET', 'SELL', null, position_qty);
         console.log(`Placing MARKET SELL order`);
     }
 
@@ -80,37 +80,33 @@ async function placeLimitOrder(client: MainClient, config: StrategyConfig, openP
     return true;
 }
 
-// 추가 전략 (보류): 먹을만큼의 갭이 되면 ASK또는 BID 주문 넣는 방법 (포지션 손절이랑 반대) -> 대신 한번에 얻는 이득 한정
 export async function riskManagement(client: MainClient, config: StrategyConfig, logger: winston.Logger, openPosition: PositionResponse){
     const position_qty = openPosition.data.position_qty;
     // const average_open_price = openPosition.data.average_open_price;
     // const mark_price = openPosition.data.mark_price;
 
-    if(position_qty !== 0){
-        // logger.info(`Risk Management execute`);
-        // await placeAskBidOrder(client, config.symbol, position_qty);
-
-        //현재 포지션 pnl 계산
+    if (position_qty !== 0) {
+        // 현재 포지션 PnL 계산
         const pnlPercentage = await calculatePnLPercentage(openPosition);
         logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
 
-        //만약 pnl이 음수이고, stopLossRatio보다 같거나 커지면 탈출
-        if( pnlPercentage < 0 
-            && config.stopLossRatio * 5  <= Math.abs(pnlPercentage) 
-            && Math.abs(pnlPercentage) < config.stopLossRatio * 10
-        ){
+        // 손실관리 - 표준
+        if (pnlPercentage < 0 
+            && config.stopLossRatio * 5 < Math.abs(pnlPercentage) 
+            && Math.abs(pnlPercentage) <= config.stopLossRatio * 10) {
             logger.info(`LOSS Risk Management execute - Standard`);
             return await placeLimitOrder(client, config, openPosition);
         }
 
-        if(pnlPercentage < 0 && Math.abs(pnlPercentage) >= config.stopLossRatio * 10){
+        // 손실관리 - 공격적
+        if (pnlPercentage < 0 && Math.abs(pnlPercentage) > config.stopLossRatio * 10) {
             logger.info(`LOSS Risk Management execute - Aggressive`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
-            //return await placeMarketOrder(client, config.symbol, position_qty);
+            // return await placeMarketOrder(client, config.symbol, position_qty);
         }
 
-        //만약 pnl이 0보다 크고, takeProfitRatio보다 같거나 커지면 탈출
-        if(pnlPercentage >= 0){
+        // 이익실현 관리
+        if (pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio) {
             logger.info(`TAKE Risk Management execute`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
         }
