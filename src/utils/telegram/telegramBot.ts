@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import { accountInfo } from '../../utils/account';
-import { getAllPositions, getDailyVolume } from '../../lib/api/account';
+import { getAllPositions, getCurrentHolding, getDailyVolume } from '../../lib/api/account';
 import { getUsersPoints } from '../../lib/api/builder';
 import { strategies } from '../../strategy/strategies';
 import { RestAPIUrl } from '../../enums';
@@ -98,43 +98,46 @@ export async function sendReportMessage(): Promise<void> {
         // Filter positions to include only those in strategies
         const filteredPositions = positions.data.rows.filter((position: any) => strategies.hasOwnProperty(position.symbol));
 
-      
+        const currentHolding = await getCurrentHolding();
+        const hodling = currentHolding.data.holding[0].holding.toFixed(2);
+        const token = currentHolding.data.holding[0].token;
+
         // Extract only the required fields
         const { total_points, global_rank, tier, current_epoch_points, current_epoch_rank } = userPoints.data;
-        const dailyVolumeData = dailyVolume.data.map((entry: any) => `Date: ${entry.date}, Volume: ${entry.perp_volume} USDC`).join('\n');
+        const dailyVolumeData = dailyVolume.data.map((entry: any) => `
+    Date: ${entry.date}, Volume: ${entry.perp_volume.toFixed(2)} USDC`).join('');
         const { total_pnl_24_h } = positions.data;
         const positionsData = filteredPositions.map((position: any) => `
     <b>Symbol:</b> ${position.symbol}
     <b>Fee (24h):</b> ${position.fee_24_h}
     <b>PnL (24h):</b> ${position.pnl_24_h}
-    <b>Position Qty:</b> ${position.position_qty}
-    <b>Unsettled PnL:</b> ${position.unsettled_pnl}`).join('\n---------------------------------\n');
+    <b>Unsettled PnL:</b> ${position.unsettled_pnl}`).join('\n');
 
-
-  const message = `
-  📊 <b>Orderly MMBot Report</b> 📊
-  ---------------------------------
-  <b>Total Points:</b> ${total_points}
-  <b>Global Rank:</b> ${global_rank}
-  <b>Tier:</b> ${tier}
-  <b>Current Epoch Points:</b> ${current_epoch_points}
-  <b>Current Epoch Rank:</b> ${current_epoch_rank}
-  ---------------------------------
-  <b>Daily Volume:</b> 
-  ${dailyVolumeData}
-  ---------------------------------
-  <b>Total PnL (24h):</b> ${total_pnl_24_h}
-  <b>Positions Info:</b> 
-  ${positionsData}
-          `;
-
-        bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-    } catch (error) {
-        console.error('Error sending Telegram message:', error);
-    }
+    const message = `
+    📊 <b>Orderly MMBot Report</b> 📊
+    ---------------------------------
+    <b>Total Points:</b> ${total_points}
+    <b>Global Rank:</b> ${global_rank}
+    <b>Tier:</b> ${tier}
+    <b>Current Epoch Points:</b> ${current_epoch_points}
+    <b>Current Epoch Rank:</b> ${current_epoch_rank}
+    ---------------------------------
+    <b>Daily Volume:</b> 
+    ${dailyVolumeData}
+    ---------------------------------
+    <b>Total PnL (24h):</b> ${total_pnl_24_h}
+    <b>Positions Info:</b> 
+    <b>Current Holding:</b> ${hodling} ${token} 
+    ${positionsData}
+            `;
+    
+            bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        } catch (error) {
+            console.error('Error sending Telegram message:', error);
+        }
 }
 
 // Function to start the periodic message sending
 export function startPeriodicMessages() {
-    setInterval(sendReportMessage, 1800000); // 30 minutes
+    setInterval(sendReportMessage, 3600000); // 1 hour
 }

@@ -62,7 +62,7 @@ async function placeLimitOrder(client: MainClient, config: StrategyConfig, openP
 
     const position_qty = openPosition.data.position_qty;
     const average_open_price = openPosition.data.average_open_price;
-    const maxDeviation = average_open_price * 0.00018;
+    const maxDeviation = average_open_price * 0.0002;
 
     let orderPrice = average_open_price;
     if (position_qty < 0) {
@@ -83,6 +83,8 @@ async function placeLimitOrder(client: MainClient, config: StrategyConfig, openP
 // 추가 전략 (보류): 먹을만큼의 갭이 되면 ASK또는 BID 주문 넣는 방법 (포지션 손절이랑 반대) -> 대신 한번에 얻는 이득 한정
 export async function riskManagement(client: MainClient, config: StrategyConfig, logger: winston.Logger, openPosition: PositionResponse){
     const position_qty = openPosition.data.position_qty;
+    // const average_open_price = openPosition.data.average_open_price;
+    // const mark_price = openPosition.data.mark_price;
 
     if(position_qty !== 0){
         // logger.info(`Risk Management execute`);
@@ -107,8 +109,8 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
             //return await placeMarketOrder(client, config.symbol, position_qty);
         }
 
-        //만약 pnl이 양수이고, takeProfitRatio보다 같거나 커지면 탈출
-        if(pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
+        //만약 pnl이 0보다 크고, takeProfitRatio보다 같거나 커지면 탈출
+        if(pnlPercentage >= 0){
             logger.info(`TAKE Risk Management execute`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
         }

@@ -7,10 +7,10 @@ export const strategies: Record<string, StrategyConfig> = {
     // 'PERP_TON_USDC': {
     //     symbol: 'PERP_TON_USDC',
     //     precision: 4,
-    //     orderQuantity: 16,
-    //     tradePeriodMs: 15000,
+    //     orderQuantity: 10,
+    //     tradePeriodMs: 10000,
     //     stdDevPeriod: 5,
-    //     orderLevels: 3,
+    //     orderLevels: 1,
     //     orderSpacing: 0.015, // (0.01~0.1)
     //     takeProfitRatio: 0.02,
     //     stopLossRatio: 0.01,
@@ -18,29 +18,44 @@ export const strategies: Record<string, StrategyConfig> = {
     //     k: 5,  // 시장의 변동성과 거래 빈도에 따라 조정 (1~10)
     //     stdDevThreshold: 0.002,
     // },
-    
-    'PERP_LINK_USDC': {
-        symbol: 'PERP_LINK_USDC',
-        precision: 3,
-        orderQuantity: 15,
-        tradePeriodMs: 15000,
-        stdDevPeriod: 40,
-        orderLevels: 1,
-        orderSpacing: 0.05,
-        takeProfitRatio: 0.03,
+
+    'PERP_ARB_USDC': {
+        symbol: 'PERP_ARB_USDC',
+        precision: 4,
+        orderQuantity: 100,
+        tradePeriodMs: 10000,
+        stdDevPeriod: 5,
+        orderLevels: 3,
+        orderSpacing: 0.015, // (0.01~0.1)
+        takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
-        gamma: 0.5,
-        k: 1.6,
+        gamma: 0.5, // 낮은 값은 더 많은 리스크를 감수하고, 높은 값은 리스크를 줄이는 경향 (0.01~0.5)
+        k: 5,  // 시장의 변동성과 거래 빈도에 따라 조정 (1~10)
         stdDevThreshold: 0.002,
     },
+    
+    // 'PERP_LINK_USDC': {
+    //     symbol: 'PERP_LINK_USDC',
+    //     precision: 3,
+    //     orderQuantity: 8,
+    //     tradePeriodMs: 10000,
+    //     stdDevPeriod: 40,
+    //     orderLevels: 2,
+    //     orderSpacing: 0.05,
+    //     takeProfitRatio: 0.03,
+    //     stopLossRatio: 0.01,
+    //     gamma: 0.5,
+    //     k: 1.6,
+    //     stdDevThreshold: 0.002,
+    // },
 
     'PERP_SOL_USDC': {
         symbol: 'PERP_SOL_USDC',
         precision: 3,
         orderQuantity: 0.5,
-        tradePeriodMs: 15000,
+        tradePeriodMs: 10000,
         stdDevPeriod: 50,
-        orderLevels: 1,
+        orderLevels: 3,
         orderSpacing: 0.05,
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
@@ -52,10 +67,10 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_DOGE_USDC': {
         symbol: 'PERP_DOGE_USDC',
         precision: 5,
-        orderQuantity: 500,
-        tradePeriodMs: 15000,
+        orderQuantity: 1000,
+        tradePeriodMs: 10000,
         stdDevPeriod: 50,
-        orderLevels: 1,
+        orderLevels: 3,
         orderSpacing: 0.02,
         takeProfitRatio: 0.02,
         stopLossRatio: 0.01,
@@ -64,19 +79,19 @@ export const strategies: Record<string, StrategyConfig> = {
         stdDevThreshold: 0.00003,
     },
 
-    'PERP_ETH_USDC': {
-        symbol: 'PERP_ETH_USDC',
-        precision: 2,
-        orderQuantity: 0.02,
-        tradePeriodMs: 15000,
-        stdDevPeriod: 50,
-        orderLevels: 1,
-        orderSpacing: 0.05,
-        takeProfitRatio: 0.02,
-        stopLossRatio: 0.01,
-        gamma: 0.4,
-        k: 0.025,
-        stdDevThreshold: 0.05,
-    },
+    // 'PERP_ETH_USDC': {
+    //     symbol: 'PERP_ETH_USDC',
+    //     precision: 2,
+    //     orderQuantity: 0.02,
+    //     tradePeriodMs: 10000,
+    //     stdDevPeriod: 50,
+    //     orderLevels: 3,
+    //     orderSpacing: 0.05,
+    //     takeProfitRatio: 0.02,
+    //     stopLossRatio: 0.01,
+    //     gamma: 0.4,
+    //     k: 0.025,
+    //     stdDevThreshold: 0.05,
+    // },
 
 };

@@ -25,9 +25,10 @@ export async function getCurrentHolding(): Promise<BalanceResponse>{
 
 // async function main() {
 //     try {
-//         const res = await getCurrentHolding(accountInfo, RestAPIUrl.mainnet);
-//         console.log (res.data);
-//         console.log(res.data.holding[0].holding);
+//         const res = await getCurrentHolding();
+//         //console.log (res.data);
+//         console.log(res.data.holding[0].holding.toFixed(2));
+//         console.log(res.data.holding[0].token);
 //     } catch (error) {
 //         console.error('Error in main function:', error);
 //     }
@@ -79,6 +80,18 @@ export async function getAllPositions(){
         throw error;
     }
 }
+
+// async function main() {
+//     try {
+//         const res = await getAllPositions();
+//         console.log(res.data.rows);
+//     } catch (error) {
+//         console.error('Error in main function:', error);
+//     }
+// }
+// main().catch(error => {
+//   console.error('Unhandled error in main function:', error);
+// });
 
 //모든 Open Orders(의 orderId) 가져오기
 //https://orderly.network/docs/build-on-evm/evm-api/restful-api/private/get-orders
@@ -297,7 +310,7 @@ export async function getDailyVolume(
             }
         );
         const json = await res.json();
-        console.log(json)
+        //console.log(json)
         return json;
     } catch (error) {
         console.error('Error checking orders info:', error);
@@ -340,10 +353,21 @@ export async function getUserStatics(
             }
         );
         const json = await res.json();
-        console.log(json);
-        return json.data.rows;
+        return json;
     } catch (error) {
         console.error('Error checking daily status:', error);
         return null;
     }
 }
+
+// async function main() {
+//     try {
+//         const response = await getUserStatics();
+//         console.log(response.data)
+//     } catch (error) {
+//         console.error('Error in main function:', error);
+//     }
+// }
+// main().catch(error => {
+//   console.error('Unhandled error in main function:', error);
+// });
