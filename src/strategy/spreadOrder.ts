@@ -130,7 +130,7 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
         }
     }
 
-    await delay(10000);
+    await delay(6000);
 
     const interval = setInterval(async () => {
         try {
