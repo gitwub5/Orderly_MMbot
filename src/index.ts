@@ -33,7 +33,7 @@ async function executeStrategy(config: StrategyConfig) {
             logger.info(`Trading for ${symbol} has been stopped.`);
             return;
         }
-        
+
         try {
             logger.info(`Running market making strategy for ${symbol}...`);
             await spreadAskBidOrder(client, config, logger);
@@ -58,7 +58,17 @@ async function executeStrategy(config: StrategyConfig) {
 
 // 다중 심볼 전략 실행 함수
 async function executeMultipleStrategies(strategies: Record<string, StrategyConfig>) {
-    await Promise.all(Object.values(strategies).map(config => executeStrategy(config)));
+    const strategyPromises = Object.values(strategies).map(config => executeStrategy(config));
+
+    const results = await Promise.allSettled(strategyPromises);
+
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.error(`Strategy execution failed for ${Object.keys(strategies)[index]}: ${result.reason}`);
+        } else {
+            console.log(`Strategy execution succeeded for ${Object.keys(strategies)[index]}`);
+        }
+    });
 }
 
 // 즉시 실행 함수

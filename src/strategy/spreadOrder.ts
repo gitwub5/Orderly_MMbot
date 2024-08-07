@@ -130,12 +130,12 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
         }
     }
 
+    await delay(2000);
+
     const interval = setInterval(async () => {
         try {
             const openPosition = await client.getOnePosition(symbol);
-
             await riskManagement(client, config, logger, openPosition);
-
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
@@ -144,4 +144,9 @@ export async function spreadAskBidOrder(client: MainClient, config: StrategyConf
 
     // Ensure the interval is cleared after the trade period ends
     setTimeout(() => clearInterval(interval), tradePeriodMs);
+}
+
+// 지연 시간을 주기 위한 함수
+function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
