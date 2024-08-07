@@ -90,6 +90,9 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
         const pnlPercentage = await calculatePnLPercentage(openPosition);
         logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
 
+        // 손실관리 추가
+        // average_open_price 가격에 지정가 주문
+
         // 손실관리 - 표준
         if (pnlPercentage < 0 
             && config.stopLossRatio * 5 < Math.abs(pnlPercentage) 
