@@ -90,25 +90,31 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
         const pnlPercentage = await calculatePnLPercentage(openPosition);
         logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
 
-        // 손실관리 추가
+        // 손실관리 추가 (매우 보수적인 방법)
         // average_open_price 가격에 지정가 주문
+        // 대부분 한 쪽에만 걸리고 반대편 주문 체결은 잘 안됨 -> 평균가에 주문을 걸면 수수료 + 현재가와 평균가 차이만큼의 이득을 먹고 나옴.
 
-        // 손실관리 - 표준
+        // 손실관리 - 표준 (0.5 ~ 1% 손실)
         if (pnlPercentage < 0 
             && config.stopLossRatio * 5 < Math.abs(pnlPercentage) 
             && Math.abs(pnlPercentage) <= config.stopLossRatio * 10) {
-            logger.info(`LOSS Risk Management execute - Standard`);
+            logger.info(`Executing Standard Loss Management`);
             return await placeLimitOrder(client, config, openPosition);
         }
 
-        // 손실관리 - 공격적
-        if (pnlPercentage < 0 && Math.abs(pnlPercentage) > config.stopLossRatio * 10) {
-            logger.info(`LOSS Risk Management execute - Aggressive`);
+        // 손실관리 - 공격적 (1% ~ 1.5% 손실)
+        if (pnlPercentage < 0 && Math.abs(pnlPercentage) > config.stopLossRatio * 10 && Math.abs(pnlPercentage) <= config.stopLossRatio * 15) {
+            logger.info(`Executing Aggressive Loss Management - Limit Orders`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
-            // return await placeMarketOrder(client, config.symbol, position_qty);
         }
 
-        // 이익실현 관리
+        // 손실관리 - 극단적 (1.5% 초과 손실)
+        if (pnlPercentage < 0 && Math.abs(pnlPercentage) > config.stopLossRatio * 15) {
+            logger.info(`Executing Extreme Loss Management - Market Orders`);
+            return await placeMarketOrder(client, config.symbol, position_qty);
+        }
+
+        // 이익실현 관리 (0.3% 이상 이익)
         if (pnlPercentage > 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio) {
             logger.info(`TAKE Risk Management execute`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
