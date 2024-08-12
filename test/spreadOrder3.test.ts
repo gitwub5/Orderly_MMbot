@@ -266,20 +266,20 @@ async function executeMultipleStrategies(strategies: Record<string, StrategyConf
 
 
 export const strategies: Record<string, StrategyConfig> = {
-    'PERP_LINK_USDC': {
-        symbol: 'PERP_LINK_USDC',
-        precision: 3,
-        orderQuantity: 1.5,
-        tradePeriodMs: 20000,
-        stdDevPeriod: 40,
-        orderLevels: 3,
-        orderSpacing: 0.05,
-        takeProfitRatio: 0.01,
-        stopLossRatio: 0.01,
-        gamma: 0.5,
-        k: 1.6,
-        stdDevThreshold: 0.002,
-    },
+    // 'PERP_LINK_USDC': {
+    //     symbol: 'PERP_LINK_USDC',
+    //     precision: 3,
+    //     orderQuantity: 1.5,
+    //     tradePeriodMs: 20000,
+    //     stdDevPeriod: 40,
+    //     orderLevels: 3,
+    //     orderSpacing: 0.05,
+    //     takeProfitRatio: 0.01,
+    //     stopLossRatio: 0.01,
+    //     gamma: 0.5,
+    //     k: 1.6,
+    //     stdDevThreshold: 0.002,
+    // },
 
     // 'PERP_SOL_USDC': {
     //     symbol: 'PERP_SOL_USDC',

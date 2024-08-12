@@ -3,13 +3,13 @@ import { RestAPIUrl } from './enums';
 import { accountInfo } from './utils/account';
 import { StrategyConfig } from './strategy/strategyConfig';
 import { cancelAllOrdersAndClosePositions } from './strategy/closePosition';
-import { spreadOrder,spreadAskBidOrder } from './strategy/spreadOrder';
+import { spreadOrder } from './strategy/spreadOrder';
 import { strategies } from './strategy/strategies';
 import { startPeriodicMessages } from './utils/telegram/telegramBot';
 import { stopFlag } from './globals';
 import { createLogger } from './utils/logger/logger';
 
-// 전략 실행 함수
+// 전략 실행 함수 ㅇ
 async function executeStrategy(config: StrategyConfig) {
     const client = new MainClient(accountInfo, RestAPIUrl.mainnet);
     const { symbol, tradePeriodMs } = config;
@@ -34,7 +34,7 @@ async function executeStrategy(config: StrategyConfig) {
 
         try {
             logger.info(`Running market making strategy for ${symbol}...`);
-            await spreadAskBidOrder(client, config, logger);
+            await spreadOrder(client, config, logger);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during strategy execution for ${symbol}: ${errorMessage}`);
