@@ -97,7 +97,8 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
         if (pnlPercentage < 0 
             && Math.abs(pnlPercentage) < config.stopLossRatio) {
             logger.info(`Executing Standard Loss Management`);
-            return await placeAskBidOrder(client, config.symbol, position_qty);
+            return await placeMarketOrder(client, config.symbol, position_qty);
+            //return await placeAskBidOrder(client, config.symbol, position_qty);
         }
 
         // 손실관리 - 공격적 (1% 이상 손실)
@@ -109,6 +110,7 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
         // 이익실현 관리
         if (pnlPercentage >= 0 && Math.abs(pnlPercentage) < config.takeProfitRatio) {
             logger.info(`TAKE Risk Management execute`);
+            // return await placeLimitOrder(); -> 이득 먹을만큼 지정가 주문으로 변경
             return await placeAskBidOrder(client, config.symbol, position_qty);
         }
 

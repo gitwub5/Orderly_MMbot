@@ -58,7 +58,6 @@ async function executeMultipleStrategies(strategies: Record<string, StrategyConf
     await Promise.all(Object.values(strategies).map(config => executeStrategy(config)));
 }
 
-
 (async () => {
     try {
         console.log('Starting strategy execution for multiple symbols...');

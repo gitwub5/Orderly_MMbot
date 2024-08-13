@@ -11,26 +11,24 @@ import winston from 'winston';
 // body 값에 visible_quantity, reduce_only 추가하면 수수료 rebate가 안됨 -> WHY???????
 export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
     const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision } = config;
-
-    logger.info('Canceling all existing orders...');
-    await client.cancelAllOrders(symbol);
    
     const openPosition = await client.getOnePosition(config.symbol)
 
     if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
-        const duration = 10000; // 10초
-        const interval = 1000;  // 1초 간격
-        let elapsed = 0;        // 경과 시간
+        const duration = 10000; // 15초
+        const orderBookInterval = 200;
+        const tradeInterval = 1000;
+        let elapsed = 0; // 경과 시간
 
 
         // 오더북 데이터 및 거래 데이터를 백그라운드에서 수집 시작
-        const orderBookData = collectOrderBookData(client, symbol, duration, interval);
-        const tradeData = collectTradeData(client, symbol, duration, interval);
+        const orderBookData = collectOrderBookData(client, symbol, duration, orderBookInterval);
+        const tradeData = collectTradeData(client, symbol, duration, tradeInterval);
 
         while (elapsed < duration) {
             logger.info(`Elapsed Time: ${elapsed / 1000} seconds`);
-            await delay(interval); // 1초 대기
-            elapsed += interval;
+            await delay(1000); //
+            elapsed += 1000;
         }
 
         // 백그라운드 데이터 수집 중 다른 작업 수행
@@ -57,38 +55,51 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
         // 두 예측을 결합하여 최종 예측 결정
         let prediction;
 
-        if (marketDirectionPrediction === 1 && orderBookPrediction === 1) {
-            prediction = 1;  // 둘 다 상승 예측일 때
-        } else if (marketDirectionPrediction === -1 && orderBookPrediction === -1) {
-            prediction = -1;  // 둘 다 하락 예측일 때
+        if (marketDirectionPrediction === 1) {
+            if (orderBookPrediction === -1) {
+                prediction = 0;  // Market이 Up, OrderBook이 Down이면 Stable로 판단
+            } else {
+                prediction = 1;  // Market이 Up이고, OrderBook이 Stable 또는 Up이면 Up으로 판단
+            }
+        } else if (marketDirectionPrediction === -1) {
+            if (orderBookPrediction === 1) {
+                prediction = 0;  // Market이 Down, OrderBook이 Up이면 Stable로 판단
+            } else {
+                prediction = -1;  // Market이 Down이고, OrderBook이 Stable 또는 Down이면 Down으로 판단
+            }
         } else {
-            prediction = 0;  // 나머지 경우, 안정적 또는 불확실한 상태로 판단
+            // Market이 Stable일 때, OrderBook의 예측을 따름
+            prediction = orderBookPrediction;
         }
 
         logger.info(`Final Combined Prediction: ${prediction === 1 ? 'UP' : prediction === -1 ? 'DOWN' : 'STABLE'}`);
         
         if (prediction === 1) {
             logger.info('Prediction indicates price is likely to go up.');
-            for (let level = 0; level < orderLevels; level++) {
-                if(level === 0){
-                    const buyPrice = fixPrecision(midPrice, precision);
-                    await client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
-                }
+            for (let level = 0; level < orderLevels ; level++) {
+                // if(level === 0){
+                //     const buyPrice = fixPrecision(midPrice, precision);
+                //     await client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
+                // }
                 await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
                     body: JSON.stringify({ level: level })
                 });
             }
+            await delayWithCountdown(5000, logger); 
+
         } else if (prediction === -1) {
             logger.info('Prediction indicates price is likely to go down.');
-            for (let level = 0; level < orderLevels; level++) {
-                if(level === 0){
-                    const sellPrice = fixPrecision(midPrice, precision);
-                    await client.placeOrder(symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
-                }
+            for (let level = 0; level < orderLevels ; level++) {
+                // if(level === 0){
+                //     const sellPrice = fixPrecision(midPrice, precision);
+                //     await client.placeOrder(symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
+                // }
                 await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
                     body: JSON.stringify({ level: level })
                 });
             }
+            await delayWithCountdown(5000, logger); 
+
         } else {
             logger.info('Prediction indicates price is likely to remain stable.');
             const T = 1;
@@ -124,8 +135,8 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
                     });
                  }
             }
-        }
-        await delayWithCountdown(10000, logger); 
+            await delayWithCountdown(15000, logger); 
+        } 
     }
     
     // Risk management을 2초 간격으로 반복 실행
@@ -136,6 +147,10 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
         if (openPositionAfterDelay.data.position_qty === 0 || Math.abs(openPositionAfterDelay.data.position_qty * openPositionAfterDelay.data.average_open_price) <= 10) {
             logger.info("All positions closed, stopping risk management.");
             clearInterval(intervalId); // 포지션이 모두 닫히면 반복 중지
+
+            //열려 있는 주문 모두 취소
+            logger.info('Canceling all existing orders...');
+            await client.cancelAllOrders(symbol);
             return; // 종료
         } 
         
@@ -146,7 +161,7 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
         }
-    }, 2000);
+    }, 5000);
 
     // `setInterval`이 정상 종료될 때까지 `spreadOrder`가 종료되지 않도록 유지
     await new Promise<void>((resolve) => {

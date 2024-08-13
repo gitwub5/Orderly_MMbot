@@ -12,7 +12,8 @@ export function collectTradeData(client: MainClient, symbol: string, duration: n
     return new Promise(async (resolve, reject) => {
         try {
             const snapshots: TradeSnapshot[] = [];
-            const endTime = Date.now() + duration;
+            const startTime = Date.now();  // 데이터 수집 시작 시점의 타임스탬프
+            const endTime = startTime + duration;
             const seenTimestamps = new Set<number>(); // 이미 처리된 거래의 timestamp를 추적
 
             while (Date.now() < endTime) {
@@ -21,7 +22,8 @@ export function collectTradeData(client: MainClient, symbol: string, duration: n
                 trades.data.rows.forEach(trade => {
                     const { executed_timestamp, executed_price, executed_quantity, side } = trade;
 
-                    if (!seenTimestamps.has(executed_timestamp)) {
+                    // 수집 시작 시점 이후의 거래만 처리
+                    if (executed_timestamp >= startTime && !seenTimestamps.has(executed_timestamp)) {
                         seenTimestamps.add(executed_timestamp);
 
                         let snapshot = snapshots.find(snap => snap.timestamp === executed_timestamp);

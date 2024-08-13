@@ -15,7 +15,7 @@ export async function collectOrderBookData(client: MainClient, symbol: string, d
 
             while (Date.now() < endTime) {
                 //오더북 양쪽 10개 레벨 데이터 수집
-                const orderBook = await client.getOrderBook(symbol, 10);
+                const orderBook = await client.getOrderBook(symbol, 15);
                 snapshots.push({ timestamp: orderBook.data.timestamp, orderBook: orderBook.data });
                 await delay(interval);
             }
@@ -31,7 +31,7 @@ export function predictPriceMovement(orderBooks: OrderBookSnapshot[]): number {
     let totalBidQuantity = 0;
     let totalAskQuantity = 0;
     let totalWeight = 0;
-    const weightDecay = 0.9; // 각 이전 데이터에 대해 가중치를 줄이는 비율
+    const weightDecay = 0.85; // 각 이전 데이터에 대해 가중치를 줄이는 비율
 
     // 가중치를 고려한 bid와 ask 수량 합계 계산
     orderBooks.forEach((snapshot, index) => {
