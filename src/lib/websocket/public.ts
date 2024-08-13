@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { account } from '../../interfaces/account';
+import { Account } from '../../interfaces/account';
 
 export class WebSocketManager {
   public url: string;
@@ -9,7 +9,7 @@ export class WebSocketManager {
   public pingTimer: NodeJS.Timeout | null;
   public pingInterval: number;
 
-  constructor(account: account, url: string) {
+  constructor(account: Account, url: string) {
     this.url = `${url}${account.accountId}`;
     this.websocket = null;
     this.subscriptions = new Set();

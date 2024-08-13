@@ -1,4 +1,4 @@
-export interface account {
+export interface Account {
     accountId: string;
     orderlyKey: string;
     privateKeyBase58: string;

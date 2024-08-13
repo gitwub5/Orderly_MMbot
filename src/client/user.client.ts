@@ -1,6 +1,6 @@
 import { BaseClient } from "./base.client";
 import {
-  account,
+  Account,
   BalanceResponse,
   PositionResponse,
   PositionsResponse,
@@ -8,7 +8,7 @@ import {
 } from "../interfaces";
 
 export class AccountClient extends BaseClient {
-  constructor(account: account, apiUrl: string) {
+  constructor(account: Account, apiUrl: string) {
     super(account, apiUrl);
   }
 

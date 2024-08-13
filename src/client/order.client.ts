@@ -1,9 +1,9 @@
 import { BaseClient } from './base.client';
-import { account, OrderResponse } from '../interfaces';
+import { Account, OrderResponse } from '../interfaces';
 import { OrderStatus } from "../enums";
 
 export class OrderClient extends BaseClient {
-  constructor(account: account, apiUrl: string) {
+  constructor(account: Account, apiUrl: string) {
     super(account, apiUrl);
   }
 

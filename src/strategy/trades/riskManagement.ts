@@ -1,8 +1,7 @@
 import winston from 'winston';
-import { PositionResponse } from "../interfaces";
-import { MainClient } from "../client/main.client";
-import { StrategyConfig } from "./strategyConfig";
-import { fixPrecision } from "../utils/fixPrecision";
+import { PositionResponse } from "../../interfaces/response";
+import { MainClient } from "../../client/main.client";
+import { StrategyConfig } from "../../interfaces/strategy";
 
 async function calculatePnLPercentage(openPosition : PositionResponse) {
     const { position_qty, mark_price, average_open_price } = openPosition.data;
@@ -94,33 +93,29 @@ export async function riskManagement(client: MainClient, config: StrategyConfig,
         const pnlPercentage = await calculatePnLPercentage(openPosition);
         logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
 
-        // 손실관리 추가 (매우 보수적인 방법)
-        // average_open_price 가격에 지정가 주문
-        // 대부분 한 쪽에만 걸리고 반대편 주문 체결은 잘 안됨 -> 평균가에 주문을 걸면 수수료 + 현재가와 평균가 차이만큼의 이득을 먹고 나옴.
-        // 
-
         // 손실관리 - 표준 (0% ~ 1% 손실)
         if (pnlPercentage < 0 
-            && Math.abs(pnlPercentage) < config.stopLossRatio * 10) {
+            && Math.abs(pnlPercentage) < config.stopLossRatio) {
             logger.info(`Executing Standard Loss Management`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
         }
 
         // 손실관리 - 공격적 (1% 이상 손실)
-        if (pnlPercentage < 0 && Math.abs(pnlPercentage) >= config.stopLossRatio * 10) {
+        if (pnlPercentage < 0 && Math.abs(pnlPercentage) >= config.stopLossRatio) {
             logger.info(`Executing Aggressive Loss Management - MARKET Orders`);
             return await placeMarketOrder(client, config.symbol, position_qty);
         }
 
         // 이익실현 관리
-        if (pnlPercentage >= 0) {
+        if (pnlPercentage >= 0 && Math.abs(pnlPercentage) < config.takeProfitRatio) {
             logger.info(`TAKE Risk Management execute`);
             return await placeAskBidOrder(client, config.symbol, position_qty);
         }
 
-        // if (pnlPercentage >= 0 && Math.abs(pnlPercentage) > config.takeProfitRatio){
-        //     logger.info(`TAKE Risk Management execute`);
-        //     return await placeAskBidOrder(client, config.symbol, position_qty);
-        // }
+        // 이익실현 관리 1% 이상
+        if (pnlPercentage >= 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
+            logger.info(`TAKE Risk Management execute`);
+            return await placeMarketOrder(client, config.symbol, position_qty);
+        }
     }
 }

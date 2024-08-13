@@ -6,7 +6,7 @@ import { getUsersPoints } from '../../lib/api/builder';
 import { strategies } from '../../strategy/strategies';
 import { RestAPIUrl } from '../../enums';
 import { MainClient } from '../../client/main.client';
-import { cancelAllOrdersAndClosePositions } from '../../strategy/closePosition';
+import { cancelAllOrdersAndClosePositions } from '../../strategy/trades/closePosition';
 import { setStopFlag } from '../../globals';
 
 dotenv.config();

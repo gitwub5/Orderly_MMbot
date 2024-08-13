@@ -1,8 +1,8 @@
 import { BaseClient } from './base.client';
-import { account, MarketInfoResponse, MarketTradeResponse, OrderBookResponse, KlineResponse } from '../interfaces';
+import { Account, MarketInfoResponse, MarketTradeResponse, OrderBookResponse, KlineResponse } from '../interfaces';
 
 export class MarketClient extends BaseClient {
-  constructor(account: account, apiUrl: string) {
+  constructor(account: Account, apiUrl: string) {
     super(account, apiUrl);
   }
 
