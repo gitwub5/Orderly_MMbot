@@ -45,7 +45,7 @@ export const strategies: Record<string, StrategyConfig> = {
         takeProfitRatio: 0.01,
         stopLossRatio: 0.1,
         gamma: 0.3,
-        k: 150,
+        k: 140,
         threshold: 53,
     },
 };

@@ -59,7 +59,7 @@ export class SpreadOrder {
     private async handleDownPrediction(midPrice: number, stdDev: number, config: StrategyConfig) {
         const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision, tradePeriodMs } = config;
 
-        this.logger.info('Prediction indicates price is likely to go up.');
+        this.logger.info('Prediction indicates price is likely to go down.');
         const T = 1;
         const t = 0;
         const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
