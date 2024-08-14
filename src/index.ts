@@ -1,15 +1,15 @@
 import { MainClient } from './client/main.client';
 import { RestAPIUrl } from './enums';
 import { accountInfo } from './utils/account';
-import { StrategyConfig } from './strategy/strategyConfig';
-import { cancelAllOrdersAndClosePositions } from './strategy/closePosition';
-import { spreadOrder } from './strategy/spreadOrder';
+import { StrategyConfig } from './interfaces/strategy';
+import { cancelAllOrdersAndClosePositions } from './strategy/trades/closePosition';
+import { spreadOrder } from './strategy/trades/spreadOrder';
 import { strategies } from './strategy/strategies';
 import { startPeriodicMessages } from './utils/telegram/telegramBot';
 import { stopFlag } from './globals';
 import { createLogger } from './utils/logger/logger';
 
-// 전략 실행 함수 ㅇ
+// 전략 실행 함수
 async function executeStrategy(config: StrategyConfig) {
     const client = new MainClient(accountInfo, RestAPIUrl.mainnet);
     const { symbol, tradePeriodMs } = config;
@@ -57,7 +57,6 @@ async function executeStrategy(config: StrategyConfig) {
 async function executeMultipleStrategies(strategies: Record<string, StrategyConfig>) {
     await Promise.all(Object.values(strategies).map(config => executeStrategy(config)));
 }
-
 
 (async () => {
     try {

@@ -1,16 +1,15 @@
 import { AccountClient } from './user.client';
 import { MarketClient } from './market.client';
 import { OrderClient } from './order.client';
-import * as Interfaces from '../interfaces';
-import { accountInfo } from '../utils/account';
-import { RestAPIUrl } from '../enums';
+import * as Interfaces from '../interfaces/response';
+import { Account } from '../interfaces';
 
 export class MainClient {
   public accountClient: AccountClient;
   public marketClient: MarketClient;
   public orderClient: OrderClient;
 
-  constructor(account: Interfaces.account, apiUrl: string, wsUrl?: string) {
+  constructor(account: Account, apiUrl: string, wsUrl?: string) {
     this.accountClient = new AccountClient(account, apiUrl);
     this.marketClient = new MarketClient(account, apiUrl);
     this.orderClient = new OrderClient(account, apiUrl);

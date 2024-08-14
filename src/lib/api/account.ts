@@ -2,7 +2,7 @@ import { generateWalletSignature, signAndSendRequest } from "./signer";
 import { BalanceResponse, OrderResponse } from "../../interfaces";
 import { formatDate } from "../../utils/formatDate";
 import { RestAPIUrl } from "../../enums";
-import { account } from "../../interfaces/account";
+import { Account } from "../../interfaces/account";
 import { accountInfo } from "../../utils/account";
 
 

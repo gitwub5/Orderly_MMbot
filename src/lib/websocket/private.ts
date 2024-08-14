@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import { Buffer } from 'buffer';
 import { KeyPair } from 'near-api-js';
 import { ed25519 } from '@noble/curves/ed25519';
-import { account } from '../../interfaces/account';
+import { Account } from '../../interfaces/account';
 import { accountInfo } from '../../utils/account';
 import { WsPrivateUrl } from '../../enums';
 

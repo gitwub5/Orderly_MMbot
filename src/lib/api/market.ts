@@ -1,5 +1,5 @@
 import { accountInfo } from "../../utils/account";
-import { account } from "../../interfaces/account";
+import { Account } from "../../interfaces/account";
 import { signAndSendRequest } from './signer';
 import { RestAPIUrl } from "../../enums";
 

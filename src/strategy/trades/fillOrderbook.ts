@@ -1,6 +1,6 @@
-import { MainClient } from "../client/main.client";
-import { fixPrecision } from "../utils/fixPrecision";
-import { StrategyConfig } from "./strategyConfig";
+import { MainClient } from "../../client/main.client";
+import { fixPrecision } from "../../utils/fixPrecision";
+import { StrategyConfig } from "../../interfaces/strategy";
 import winston from 'winston';
 
 // 오더북을 채우는 함수

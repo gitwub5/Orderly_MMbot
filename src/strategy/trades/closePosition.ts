@@ -1,4 +1,4 @@
-import { MainClient } from "../client/main.client";
+import { MainClient } from "../../client/main.client";
 
 // 모든 주문 취소 및 포지션 청산 함수
 export async function cancelAllOrdersAndClosePositions(client: MainClient, symbol: string) {

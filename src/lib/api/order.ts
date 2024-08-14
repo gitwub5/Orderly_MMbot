@@ -1,4 +1,4 @@
-import { account } from "../../interfaces/account";
+import { Account } from "../../interfaces/account";
 import { signAndSendRequest } from './signer'
 import { accountInfo } from "../../utils/account";
 import { RestAPIUrl } from "../../enums";
@@ -67,7 +67,7 @@ async function testPlaceOrder(
 
 export class placeOrder {
   private static async placeOrder(
-    account: account,
+    account: Account,
     url: string,
     symbol: string,
     orderType: string,
@@ -110,7 +110,7 @@ export class placeOrder {
   }
 
   public static async limitOrder(
-    account: account,
+    account: Account,
     url: string,
     symbol: string,
     side: string,
@@ -121,7 +121,7 @@ export class placeOrder {
   }
 
   public static async marketOrder(
-    account: account,
+    account: Account,
     url: string,
     symbol: string,
     side: string,
@@ -132,7 +132,7 @@ export class placeOrder {
 }
 
 export async function editOrder(
-  account: account,
+  account: Account,
   url: string,
   orderId: string,
   symbol: string,
@@ -169,7 +169,7 @@ export async function editOrder(
 }
 
 export async function cancelOrder(
-  account: account,
+  account: Account,
   url: string,
   symbol: string,
   orderId: number
@@ -192,7 +192,7 @@ export async function cancelOrder(
 }
 
 export async function cancelBatchOrders(
-  account: account,
+  account: Account,
   url: string,
   order_ids: number[]
 ) {
@@ -216,7 +216,7 @@ export async function cancelBatchOrders(
 }
 
 export async function cancelAllOrders(
-  account: account,
+  account: Account,
   url: string,
   symbol: string
 ) {
@@ -238,7 +238,7 @@ export async function cancelAllOrders(
 }
 
 export async function getOrderById(
-  account: account,
+  account: Account,
   url: string,
   order_id: string
 ) {

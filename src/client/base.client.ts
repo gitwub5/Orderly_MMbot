@@ -1,14 +1,14 @@
-import { account } from '../interfaces';
+import { Account } from '../interfaces';
 import { ed25519 } from '@noble/curves/ed25519';
 import bs58 from 'bs58';
 import { ethers } from 'ethers';
 
 export class BaseClient {
-  protected account: account;
+  protected account: Account;
   protected apiUrl: string;
   protected wsUrl?: string | null;
 
-  constructor(account: account, apiUrl: string, wsUrl?: string) {
+  constructor(account: Account, apiUrl: string, wsUrl?: string) {
     this.account = account;
     this.apiUrl = apiUrl;
   }
