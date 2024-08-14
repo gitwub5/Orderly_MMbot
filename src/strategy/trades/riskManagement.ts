@@ -2,122 +2,165 @@ import winston from 'winston';
 import { PositionResponse } from "../../interfaces/response";
 import { MainClient } from "../../client/main.client";
 import { StrategyConfig } from "../../interfaces/strategy";
+import { fixPrecision } from '../../utils/fixPrecision';
+import { MonitorPosition } from './monitorPosition';
 
-async function calculatePnLPercentage(openPosition : PositionResponse) {
-    const { position_qty, mark_price, average_open_price } = openPosition.data;
+export class RiskManagement {
+    private client: MainClient;
+    private config: StrategyConfig;
+    private logger: winston.Logger;
+    private monitorPosition: MonitorPosition;
 
-    let pnlPercentage = 0;
-    if (position_qty > 0) { // Long position
-        pnlPercentage = ((mark_price - average_open_price) / average_open_price) * 100;
-    } else if (position_qty < 0) { // Short position
-        pnlPercentage = ((average_open_price - mark_price) / average_open_price) * 100;
-    } else {
-        pnlPercentage = 0; // No position
+    constructor(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
+        this.client = client;
+        this.config = config;
+        this.logger = logger;
+        this.monitorPosition = new MonitorPosition(client, config.symbol, logger); // 모니터링 클래스 인스턴스 생성
     }
 
-    return pnlPercentage;
-}
+    private async calculatePnLPercentage(openPosition: PositionResponse): Promise<number> {
+        const { position_qty, mark_price, average_open_price } = openPosition.data;
 
-async function placeAskBidOrder(client: MainClient, symbol: string, position_qty: number){
-    await client.cancelAllOrders(symbol);
-    
-    //만약 포지션이 음수이면 bidOrder
-    if(position_qty < 0){
-        await client.placeOrder(symbol, 'BID', 'BUY', null, -position_qty,
-            //{ body: JSON.stringify({ reduce_only: true })}
-        );
-        console.log(`Placing BID BUY order`);
-    }
-    //만약 포지션이 양수이면 askOrder
-    else if(position_qty > 0){
-        await client.placeOrder(symbol, 'ASK', 'SELL', null, position_qty, 
-           // { body: JSON.stringify({reduce_only: true })}
-        );
-        console.log(`Placing ASK SELL order`);
-    }
-
-    return true;
-}
-
-async function placeMarketOrder(client: MainClient, symbol: string, position_qty: number){
-    await client.cancelAllOrders(symbol);
-    
-    //만약 포지션이 음수이면 bidOrder
-    if(position_qty < 0){
-        await client.placeOrder(symbol, 'MARKET', 'BUY', null, -position_qty, {
-            body: JSON.stringify({ reduce_only: true })});
-        console.log(`Placing MARKET BUY order`);
-    }
-    //만약 포지션이 양수이면 askOrder
-    else if(position_qty > 0){
-        await client.placeOrder(symbol, 'MARKET', 'SELL', null, position_qty, {
-            body: JSON.stringify({ reduce_only: true })});
-        console.log(`Placing MARKET SELL order`);
-    }
-
-    return true;
-}
-
-async function placeLimitOrder(client: MainClient, symbol: string, openPosition: PositionResponse){
-    await client.cancelAllOrders(symbol);
-
-    const position_qty = openPosition.data.position_qty;
-    const average_open_price = openPosition.data.average_open_price;
-    // const maxDeviation = average_open_price * 0.0002;
-
-    let orderPrice = average_open_price;
-    if (position_qty < 0) {
-        // orderPrice += maxDeviation; // Increase the price for limit buy
-        // orderPrice = fixPrecision(orderPrice, config.precision);
-        await client.placeOrder(symbol, 'LIMIT', 'BUY', orderPrice, -position_qty, {
-            body: JSON.stringify({ reduce_only: true,  visible_quantity: 0 })});
-        console.log(`Placing LIMIT BUY order at ${orderPrice}`);
-    } else if (position_qty > 0) {
-        // orderPrice -= maxDeviation; // Decrease the price for limit sell
-        // orderPrice = fixPrecision(orderPrice, config.precision);
-        await client.placeOrder(symbol, 'LIMIT', 'SELL', orderPrice, position_qty, {
-            body: JSON.stringify({ reduce_only: true,  visible_quantity: 0 })});
-        console.log(`Placing LIMIT SELL order at ${orderPrice}`);
-    }
-
-    return true;
-}
-
-export async function riskManagement(client: MainClient, config: StrategyConfig, logger: winston.Logger, openPosition: PositionResponse){
-    const position_qty = openPosition.data.position_qty;
-    // const average_open_price = openPosition.data.average_open_price;
-    // const mark_price = openPosition.data.mark_price;
-
-    if (position_qty !== 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) > 10) {
-        // 현재 포지션 PnL 계산
-        const pnlPercentage = await calculatePnLPercentage(openPosition);
-        logger.info(`Current Position PnL Percentage: ${pnlPercentage.toFixed(4)}%`);
-
-        // 손실관리 - 표준 (0% ~ 1% 손실)
-        if (pnlPercentage < 0 
-            && Math.abs(pnlPercentage) < config.stopLossRatio) {
-            logger.info(`Executing Standard Loss Management`);
-            return await placeMarketOrder(client, config.symbol, position_qty);
-            //return await placeAskBidOrder(client, config.symbol, position_qty);
+        let pnlPercentage = 0;
+        if (position_qty > 0) { // Long position
+            pnlPercentage = ((mark_price - average_open_price) / average_open_price) * 100;
+        } else if (position_qty < 0) { // Short position
+            pnlPercentage = ((average_open_price - mark_price) / average_open_price) * 100;
         }
 
-        // 손실관리 - 공격적 (1% 이상 손실)
-        if (pnlPercentage < 0 && Math.abs(pnlPercentage) >= config.stopLossRatio) {
-            logger.info(`Executing Aggressive Loss Management - MARKET Orders`);
-            return await placeMarketOrder(client, config.symbol, position_qty);
+        return pnlPercentage;
+    }
+
+    public async executeRiskManagement(): Promise<void> {
+        const openPosition = await this.client.getOnePosition(this.config.symbol);
+        const positionQty = openPosition.data.position_qty;
+
+        if(positionQty === 0){
+            await this.client.cancelAllOrders(this.config.symbol);
+            return;
         }
 
-        // 이익실현 관리
-        if (pnlPercentage >= 0 && Math.abs(pnlPercentage) < config.takeProfitRatio) {
-            logger.info(`TAKE Risk Management execute`);
-            // return await placeLimitOrder(); -> 이득 먹을만큼 지정가 주문으로 변경
-            return await placeAskBidOrder(client, config.symbol, position_qty);
-        }
+        const pnlPercentage = await this.calculatePnLPercentage(openPosition);
 
-        // 이익실현 관리 1% 이상
-        if (pnlPercentage >= 0 && Math.abs(pnlPercentage) >= config.takeProfitRatio){
-            logger.info(`TAKE Risk Management execute`);
-            return await placeMarketOrder(client, config.symbol, position_qty);
+        // 열려있는 포지션이 10달러미만인 경우
+        if (Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
+            if (pnlPercentage > 0.0003) {
+                await this.placeMarketOrder(positionQty);
+                return;
+            }
+        }
+        else {
+            // 손실관리 및 이익실현 관리 단계 수행
+            if (pnlPercentage < 0) {
+                // 손실관리 - 표준 (0.1% 미만 손실)
+                if (Math.abs(pnlPercentage) < this.config.stopLossRatio) {
+                    this.logger.info(`Executing Standard Loss Management`);
+                    await this.client.cancelAllOrders(this.config.symbol);
+                    await this.placeLimitOrderToClose(openPosition);
+
+                    // 모니터링 시작 (손실관리 후 추가 단계 수행)
+                    await this.monitorPosition.monitor(async (updatedPosition, stopMonitoring) => {
+                        const updatedPnlPercentage = await this.calculatePnLPercentage(updatedPosition);
+                        // 손실 관리 또는 이익 실현 조건에 따라 추가 단계 수행
+                        if (Math.abs(updatedPnlPercentage) >= this.config.stopLossRatio || updatedPnlPercentage >= 0) {
+                            stopMonitoring();  // 모니터링을 종료하고 리스크 관리 재실행
+                            await this.executeRiskManagement();
+                        }
+                    });
+                // 손실관리 - 공격적 (0.1% 이상 손실) 
+                } else if (Math.abs(pnlPercentage) >= this.config.stopLossRatio) {
+                    this.logger.info(`Executing Aggressive Loss Management`);
+                    await this.client.cancelAllOrders(this.config.symbol);
+                    await this.placeMarketOrder(positionQty);
+                }
+            } else if (pnlPercentage >= 0) {
+                // 이익실현 관리 - 표준
+                if (Math.abs(pnlPercentage) < this.config.takeProfitRatio) {
+                    this.logger.info(`Executing Standard Profit Taking`);
+                    await this.client.cancelAllOrders(this.config.symbol);
+                    await this.placeLimitOrderToTake(openPosition);
+
+                    // 모니터링 시작 (이익실현 후 추가 단계 수행)
+                    await this.monitorPosition.monitor(async (updatedPosition, stopMonitoring) => {
+                        const updatedPnlPercentage = await this.calculatePnLPercentage(updatedPosition);
+                        if (Math.abs(updatedPnlPercentage) >= this.config.takeProfitRatio || updatedPnlPercentage < 0) {
+                            stopMonitoring();  // 모니터링을 종료하고 리스크 관리 재실행
+                            await this.executeRiskManagement();
+                        }
+                    });
+                // 이익실현 관리 - 공격적 (1% 이상 이익) 
+                } else if (Math.abs(pnlPercentage) >= this.config.takeProfitRatio) {
+                    this.logger.info(`Executing Aggressive Profit Taking`);
+                    await this.client.cancelAllOrders(this.config.symbol);
+                    await this.placeMarketOrder(positionQty);
+                }
+            }
+        }
+    }
+
+    private async placeAskBidOrder(positionQty: number): Promise<void> {
+        if (positionQty < 0) {
+            await this.client.placeOrder(this.config.symbol, 'BID', 'BUY', null, -positionQty);
+            this.logger.info(`Placing BID BUY order`);
+        } else if (positionQty > 0) {
+            await this.client.placeOrder(this.config.symbol, 'ASK', 'SELL', null, positionQty);
+            this.logger.info(`Placing ASK SELL order`);
+        }
+    }
+
+    private async placeMarketOrder(positionQty: number): Promise<void> {
+        if (positionQty < 0) {
+            await this.client.placeOrder(this.config.symbol, 'MARKET', 'BUY', null, -positionQty, {
+                body: JSON.stringify({ reduce_only: true })
+            });
+            this.logger.info(`Placing MARKET BUY order`);
+        } else if (positionQty > 0) {
+            await this.client.placeOrder(this.config.symbol, 'MARKET', 'SELL', null, positionQty, {
+                body: JSON.stringify({ reduce_only: true })
+            });
+            this.logger.info(`Placing MARKET SELL order`);
+        }
+    }
+
+    private async placeLimitOrderToClose(openPosition: PositionResponse): Promise<void> {
+        const positionQty = openPosition.data.position_qty;
+        const averageOpenPrice = openPosition.data.average_open_price;
+        const maxDeviation = averageOpenPrice * 0.0003;
+
+        let orderPrice = averageOpenPrice;
+        if (positionQty < 0) {
+            orderPrice += maxDeviation; // Increase the price for limit buy
+            orderPrice = fixPrecision(orderPrice, this.config.precision);
+            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', orderPrice, -positionQty, {
+                body: JSON.stringify({ reduce_only: true, visible_quantity: 0 })
+            });
+            this.logger.info(`Placing LIMIT BUY order at ${orderPrice}`);
+        } else if (positionQty > 0) {
+            orderPrice -= maxDeviation; // Decrease the price for limit sell
+            orderPrice = fixPrecision(orderPrice, this.config.precision);
+            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', orderPrice, positionQty, {
+                body: JSON.stringify({ reduce_only: true, visible_quantity: 0 })
+            });
+            this.logger.info(`Placing LIMIT SELL order at ${orderPrice}`);
+        }
+    }
+
+    private async placeLimitOrderToTake(openPosition: PositionResponse): Promise<void> {
+        const positionQty = openPosition.data.position_qty;
+        const averageOpenPrice = openPosition.data.average_open_price;
+        const maxDeviation = averageOpenPrice * 0.0006;
+
+        let orderPrice = averageOpenPrice;
+        if (positionQty < 0) {
+            orderPrice += maxDeviation; // Increase the price for limit buy
+            orderPrice = fixPrecision(orderPrice, this.config.precision);
+            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', orderPrice, -positionQty);
+            this.logger.info(`Placing LIMIT BUY order at ${orderPrice}`);
+        } else if (positionQty > 0) {
+            orderPrice -= maxDeviation; // Decrease the price for limit sell
+            orderPrice = fixPrecision(orderPrice, this.config.precision);
+            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', orderPrice, positionQty);
+            this.logger.info(`Placing LIMIT SELL order at ${orderPrice}`);
         }
     }
 }
