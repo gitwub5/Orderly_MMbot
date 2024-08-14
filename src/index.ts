@@ -60,7 +60,8 @@ class StrategyExecutor {
         while (this.strategyRunning && !stopFlag) {
             await this.executeStrategy();
             if (this.strategyRunning && !stopFlag) {
-                await this.delay(this.config.tradePeriodMs);
+                await this.delay(5000);
+                //5초후 다시 시작
             }
         }
         this.logger.info(`Trading for ${this.config.symbol} has been stopped.`);

@@ -21,36 +21,10 @@ export class SpreadOrder {
         this.riskManagement = new RiskManagement(client, config, logger);
     }
 
-    private async handleUpPrediction(midPrice: number, orderQuantity: number, orderLevels: number, precision: number) {
+    private async handleUpPrediction(midPrice: number, stdDev: number, config: StrategyConfig) {
+        const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision, tradePeriodMs } = config;
+
         this.logger.info('Prediction indicates price is likely to go up.');
-        for (let level = 0; level < orderLevels - 1; level++) {
-            if (level === 0) {
-                const buyPrice = fixPrecision(midPrice, precision);
-                await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
-            }
-            await this.client.placeOrder(this.config.symbol, 'BID', 'BUY', null, orderQuantity, {
-                body: JSON.stringify({ level: level })
-            });
-        }
-        await delayWithCountdown(10000, this.logger);
-    }
-
-    private async handleDownPrediction(midPrice: number, orderQuantity: number, orderLevels: number, precision: number) {
-        this.logger.info('Prediction indicates price is likely to go down.');
-        for (let level = 0; level < orderLevels - 1; level++) {
-            if (level === 0) {
-                const sellPrice = fixPrecision(midPrice, precision);
-                await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
-            }
-            await this.client.placeOrder(this.config.symbol, 'ASK', 'SELL', null, orderQuantity, {
-                body: JSON.stringify({ level: level })
-            });
-        }
-        await delayWithCountdown(10000, this.logger);
-    }
-
-    private async handleStablePrediction(midPrice: number, orderQuantity: number, orderLevels: number, orderSpacing: number, stdDev: number, gamma: number, k: number, precision: number) {
-        this.logger.info('Prediction indicates price is likely to remain stable.');
         const T = 1;
         const t = 0;
         const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
@@ -58,10 +32,74 @@ export class SpreadOrder {
 
         for (let level = 0; level < orderLevels; level++) {
             if (level === 0) {
-                await this.client.placeOrder(this.config.symbol, 'BID', 'BUY', null, orderQuantity, {
+                const buyPrice = fixPrecision(midPrice, precision);
+                await this.client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
+            } else {
+                const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+                const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+
+                const buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
+                const sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+                
+                await this.client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
+                    body: JSON.stringify({ post_only_adjust: false })
+                });
+
+                await this.client.placeOrder(symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
+                    body: JSON.stringify({ post_only_adjust: false })
+                });
+            }
+        }
+        await delayWithCountdown(45000, this.logger);
+    }
+
+    private async handleDownPrediction(midPrice: number, stdDev: number, config: StrategyConfig) {
+        const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision } = config;
+
+        this.logger.info('Prediction indicates price is likely to go up.');
+        const T = 1;
+        const t = 0;
+        const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
+        this.logger.info(`Optimal spread: ${optimalSpread}`);
+
+        for (let level = 0; level < orderLevels; level++) {
+            if (level === 0) {
+                const sellPrice = fixPrecision(midPrice, precision);
+                await this.client.placeOrder(symbol, 'LIMIT', 'BUY', sellPrice, orderQuantity);
+            } else {
+                const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+                const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+
+                const buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
+                const sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+
+                await this.client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
+                    body: JSON.stringify({ post_only_adjust: false })
+                });
+
+                await this.client.placeOrder(symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
+                    body: JSON.stringify({ post_only_adjust: false })
+                });
+            }
+        }
+        await delayWithCountdown(45000, this.logger);
+    }
+
+    private async handleStablePrediction(midPrice: number, stdDev: number, config: StrategyConfig) {
+        this.logger.info('Prediction indicates price is likely to remain stable.');
+
+        const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision } = config;
+        const T = 1;
+        const t = 0;
+        const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
+        this.logger.info(`Optimal spread: ${optimalSpread}`);
+
+        for (let level = 0; level < orderLevels; level++) {
+            if (level === 0) {
+                await this.client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
                     body: JSON.stringify({ level: level })
                 });
-                await this.client.placeOrder(this.config.symbol, 'ASK', 'SELL', null, orderQuantity, {
+                await this.client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
                     body: JSON.stringify({ level: level })
                 });
             } else {
@@ -80,14 +118,14 @@ export class SpreadOrder {
                 });
             }
         }
-        await delayWithCountdown(15000, this.logger);
+        await delayWithCountdown(45000, this.logger);
     }
 
     public async executeSpreadOrder() {
         const openPosition = await this.client.getOnePosition(this.config.symbol);
 
         if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
-            const duration = 10000;
+            const duration = 15000;
             const orderBookInterval = 200;
             const tradeInterval = 1000;
             let elapsed = 0; // 경과 시간
@@ -134,11 +172,11 @@ export class SpreadOrder {
 
             // Prediction에 따라 처리할 함수 호출
             if (prediction === 1) {
-                await this.handleUpPrediction(midPrice, this.config.orderQuantity, this.config.orderLevels, this.config.precision);
+                await this.handleUpPrediction(midPrice, stdDev, this.config);
             } else if (prediction === -1) {
-                await this.handleDownPrediction(midPrice, this.config.orderQuantity, this.config.orderLevels, this.config.precision);
+                await this.handleDownPrediction(midPrice, stdDev, this.config);
             } else {
-                await this.handleStablePrediction(midPrice, this.config.orderQuantity, this.config.orderLevels, this.config.orderSpacing, stdDev, this.config.gamma, this.config.k, this.config.precision);
+                await this.handleStablePrediction(midPrice, stdDev, this.config);
             }
         }
 

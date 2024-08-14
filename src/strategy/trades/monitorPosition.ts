@@ -34,7 +34,7 @@ export class MonitorPosition {
                     };
                     await callback(updatedPosition, stopMonitoring);
                 }
-            }, 1000); // 1초 간격으로 모니터링
+            }, 2000); // N초 간격으로 모니터링
         });
     }
 

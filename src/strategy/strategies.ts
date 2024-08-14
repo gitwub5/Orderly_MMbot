@@ -41,11 +41,11 @@ export const strategies: Record<string, StrategyConfig> = {
         tradePeriodMs: 5000,
         stdDevPeriod: 20,
         orderLevels: 3,
-        orderSpacing: 0.02,
+        orderSpacing: 0.01,
         takeProfitRatio: 0.01,
         stopLossRatio: 0.1,
         gamma: 0.3,
-        k: 160,
+        k: 150,
         threshold: 53,
     },
 };
