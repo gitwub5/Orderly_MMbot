@@ -53,10 +53,12 @@ export class RiskManagement {
         }
         else {
             await this.client.cancelAllOrders(this.config.symbol);
+            let stopLossRatio = 0.03;
+            let takeProfitRatio = 0.1;
             // 손실관리 및 이익실현 관리 단계 수행
             if (pnlPercentage < 0) {
-                // 손실관리 - 표준 (0.1% 미만 손실)
-                if (Math.abs(pnlPercentage) < 0.01 ) {
+                // 손실관리 - 표준 (0.3% 미만 손실)
+                if (Math.abs(pnlPercentage) < stopLossRatio ) {
                     this.logger.info(`Executing Standard Loss Management`);
 
                     // 모니터링 시작 (손실관리 후 추가 단계 수행)
@@ -67,13 +69,13 @@ export class RiskManagement {
                         const updatedPnlPercentage = await this.calculatePnLPercentage(updatedPosition);
                         
                         // 손실 관리 또는 이익 실현 조건에 따라 추가 단계 수행
-                        if (Math.abs(updatedPnlPercentage) >= 0.01 || updatedPnlPercentage >= 0) {
+                        if (Math.abs(updatedPnlPercentage) >= stopLossRatio || updatedPnlPercentage >= 0) {
                             stopMonitoring();  // 모니터링을 종료하고 리스크 관리 재실행
                             await this.executeRiskManagement();
                         }
                     });
                 // 손실관리 - 공격적 (0.1% 이상 손실) 
-                } else if (Math.abs(pnlPercentage) >= 0.01) {
+                } else if (Math.abs(pnlPercentage) >= stopLossRatio) {
                     this.logger.info(`Executing Aggressive Loss Management`);
                     //ASKBID 주문을 손실 용으로 따로 만들어서 -> ex> ASK BUY / BID SELL 
                     await this.placeMarketOrder(positionQty);
@@ -81,7 +83,7 @@ export class RiskManagement {
 
             } else if (pnlPercentage >= 0) {
                 // 이익실현 관리 - 표준  (1% 미만 이익) 
-                if (pnlPercentage < 0.1) {
+                if (pnlPercentage < takeProfitRatio) {
                     this.logger.info(`Executing Standard Profit Taking`);
                     await this.placeLimitOrderToTake(openPosition);
 
@@ -102,13 +104,13 @@ export class RiskManagement {
                         }
                         pastPnlPercentage = updatedPnlPercentage;
 
-                        if (updatedPnlPercentage >= 0.1 || updatedPnlPercentage < 0) {
+                        if (updatedPnlPercentage >= takeProfitRatio || updatedPnlPercentage < 0) {
                             stopMonitoring();  // 모니터링을 종료하고 리스크 관리 재실행
                             await this.executeRiskManagement();
                         }
                     });
                 // 이익실현 관리 - 공격적 (1% 이상 이익) 
-                } else if (pnlPercentage >= 0.1) {
+                } else if (pnlPercentage >= takeProfitRatio) {
                     this.logger.info(`Executing Aggressive Profit Taking`);
                     await this.placeMarketOrder(positionQty);
                 }
