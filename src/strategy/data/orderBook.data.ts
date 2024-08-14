@@ -89,22 +89,3 @@ function calculateVolatilityThreshold(orderBooks: OrderBookSnapshot[]): number {
     return Math.sqrt(variance);
 }
 
-// export function predictPriceMovement(orderBook: OrderBookResponse['data'], threshold: number): number {
-//     const totalBidQuantity = orderBook.bids.reduce((total, bid) => total + bid.quantity, 0);
-//     const totalAskQuantity = orderBook.asks.reduce((total, ask) => total + ask.quantity, 0);
-  
-//     const totalQuantity = totalBidQuantity + totalAskQuantity;
-//     const bidPercentage = (totalBidQuantity / totalQuantity) * 100;
-//     const askPercentage = (totalAskQuantity / totalQuantity) * 100;
-    
-//     console.log(`bid: ${bidPercentage}, ask: ${askPercentage}`);
-//     //const threshold = 55;  // N% 이상 차이가 나면 높은 가능성으로 판단
-  
-//     if (bidPercentage > threshold) {
-//       return 1;  // 확실한 가격 상승 가능성
-//     } else if (askPercentage > threshold) {
-//       return -1;  // 확실한 가격 하락 가능성
-//     } else {
-//       return 0;  // 변동 없음 또는 예측 불확실
-//     }
-//   }
