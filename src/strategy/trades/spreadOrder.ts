@@ -2,7 +2,7 @@ import { MainClient } from "../../client/main.client";
 import { calculateOptimalSpread  } from "../functions/optimalSpread";
 import { StrategyConfig } from "../../interfaces/strategy";
 import { fixPrecision } from "../../utils/fixPrecision";
-import { riskManagement } from "./riskManagement";
+import { RiskManagement } from "./riskManagement";
 import { delay, delayWithCountdown } from "../../utils/delay";
 import { collectOrderBookData, predictPriceMovement } from "../data/orderBook.data";
 import { collectTradeData, calculateStandardDeviation, predictMarketDirection } from "../data/trade.data";
@@ -74,6 +74,9 @@ async function handleStablePrediction(client: MainClient, symbol: string, midPri
 export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
     const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision } = config;
    
+    // RiskManagement 인스턴스 생성
+    const riskManagement = new RiskManagement(client, config, logger);
+    
     const openPosition = await client.getOnePosition(config.symbol)
 
     if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
@@ -148,40 +151,7 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
         }
     }
     
-    // Risk management을 2초 간격으로 반복 실행
-    const intervalId = setInterval(async () => {
-        const openPositionAfterDelay = await client.getOnePosition(symbol);
-        
-        // 포지션이 모두 닫혔는지 확인
-        if (openPositionAfterDelay.data.position_qty === 0 || Math.abs(openPositionAfterDelay.data.position_qty * openPositionAfterDelay.data.average_open_price) <= 10) {
-            logger.info("All positions closed, stopping risk management.");
-            clearInterval(intervalId); // 포지션이 모두 닫히면 반복 중지
-
-            //열려 있는 주문 모두 취소
-            logger.info('Canceling all existing orders...');
-            await client.cancelAllOrders(symbol);
-            return; // 종료
-        } 
-        
-        // riskManagement 실행
-        try {
-            await riskManagement(client, config, logger, openPositionAfterDelay);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-            logger.error(`Error during risk management for ${symbol}: ${errorMessage}`);
-        }
-    }, 5000);
-
-    // `setInterval`이 정상 종료될 때까지 `spreadOrder`가 종료되지 않도록 유지
-    await new Promise<void>((resolve) => {
-        const checkIntervalId = setInterval(async () => {
-            const openPositionAfterDelay = await client.getOnePosition(symbol);
-            
-            // 포지션이 모두 닫혔는지 확인
-            if (openPositionAfterDelay.data.position_qty === 0 || Math.abs(openPositionAfterDelay.data.position_qty * openPositionAfterDelay.data.average_open_price) <= 10) {
-                clearInterval(checkIntervalId); // 포지션이 모두 닫히면 반복 중지
-                resolve(); // 종료 후 Promise 해제
-            }
-        }, 1000); // 1초 간격으로 상태 확인
-    });
+    // 포지션이 열려 있다면 Risk Management를 실행
+    await riskManagement.executeRiskManagement();
+    
 }
