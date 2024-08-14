@@ -79,6 +79,7 @@ export class RiskManagement {
                     this.logger.info(`Executing Standard Profit Taking`);
                     await this.client.cancelAllOrders(this.config.symbol);
                     await this.placeLimitOrderToTake(openPosition);
+                    await this.placeAskBidOrder(openPosition.data.position_qty);
 
                     // 모니터링 시작 (이익실현 후 추가 단계 수행)
                     await this.monitorPosition.monitor(async (updatedPosition, stopMonitoring) => {
@@ -131,16 +132,12 @@ export class RiskManagement {
         if (positionQty < 0) {
             orderPrice += maxDeviation; // Increase the price for limit buy
             orderPrice = fixPrecision(orderPrice, this.config.precision);
-            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', orderPrice, -positionQty, {
-                body: JSON.stringify({ reduce_only: true, visible_quantity: 0 })
-            });
+            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', orderPrice, -positionQty);
             this.logger.info(`Placing LIMIT BUY order at ${orderPrice}`);
         } else if (positionQty > 0) {
             orderPrice -= maxDeviation; // Decrease the price for limit sell
             orderPrice = fixPrecision(orderPrice, this.config.precision);
-            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', orderPrice, positionQty, {
-                body: JSON.stringify({ reduce_only: true, visible_quantity: 0 })
-            });
+            await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', orderPrice, positionQty);
             this.logger.info(`Placing LIMIT SELL order at ${orderPrice}`);
         }
     }
@@ -152,12 +149,12 @@ export class RiskManagement {
 
         let orderPrice = averageOpenPrice;
         if (positionQty < 0) {
-            orderPrice += maxDeviation; // Increase the price for limit buy
+            orderPrice -= maxDeviation; // Increase the price for limit buy
             orderPrice = fixPrecision(orderPrice, this.config.precision);
             await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', orderPrice, -positionQty);
             this.logger.info(`Placing LIMIT BUY order at ${orderPrice}`);
         } else if (positionQty > 0) {
-            orderPrice -= maxDeviation; // Decrease the price for limit sell
+            orderPrice += maxDeviation; // Decrease the price for limit sell
             orderPrice = fixPrecision(orderPrice, this.config.precision);
             await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', orderPrice, positionQty);
             this.logger.info(`Placing LIMIT SELL order at ${orderPrice}`);

@@ -8,150 +8,142 @@ import { collectOrderBookData, predictPriceMovement } from "../data/orderBook.da
 import { collectTradeData, calculateStandardDeviation, predictMarketDirection } from "../data/trade.data";
 import winston from 'winston';
 
-async function handleUpPrediction(client: MainClient, symbol: string, midPrice: number, orderQuantity: number, orderLevels: number, precision: number, logger: winston.Logger) {
-    logger.info('Prediction indicates price is likely to go up.');
-    for (let level = 0; level < orderLevels - 1; level++) {
-        if (level === 0) {
-            const buyPrice = fixPrecision(midPrice, precision);
-            await client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
-        }
-        await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
-            body: JSON.stringify({ level: level })
-        });
+export class SpreadOrder {
+    private client: MainClient;
+    private config: StrategyConfig;
+    private logger: winston.Logger;
+    private riskManagement: RiskManagement;
+
+    constructor(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
+        this.client = client;
+        this.config = config;
+        this.logger = logger;
+        this.riskManagement = new RiskManagement(client, config, logger);
     }
-    await delayWithCountdown(5000, logger);
-}
 
-async function handleDownPrediction(client: MainClient, symbol: string, midPrice: number, orderQuantity: number, orderLevels: number, precision: number, logger: winston.Logger) {
-    logger.info('Prediction indicates price is likely to go down.');
-    for (let level = 0; level < orderLevels - 1; level++) {
-        if (level === 0) {
-            const sellPrice = fixPrecision(midPrice, precision);
-            await client.placeOrder(symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
-        }
-        await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
-            body: JSON.stringify({ level: level })
-        });
-    }
-    await delayWithCountdown(5000, logger);
-}
-
-async function handleStablePrediction(client: MainClient, symbol: string, midPrice: number, orderQuantity: number, orderLevels: number, orderSpacing: number, stdDev: number, gamma: number, k: number, precision: number, logger: winston.Logger) {
-    logger.info('Prediction indicates price is likely to remain stable.');
-    const T = 1;
-    const t = 0;
-    const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
-    logger.info(`Optimal spread: ${optimalSpread}`);
-
-    for (let level = 0; level < orderLevels; level++) {
-        if (level === 0) {
-            await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
+    private async handleUpPrediction(midPrice: number, orderQuantity: number, orderLevels: number, precision: number) {
+        this.logger.info('Prediction indicates price is likely to go up.');
+        for (let level = 0; level < orderLevels - 1; level++) {
+            if (level === 0) {
+                const buyPrice = fixPrecision(midPrice, precision);
+                await this.client.placeOrder(this.config.symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
+            }
+            await this.client.placeOrder(this.config.symbol, 'BID', 'BUY', null, orderQuantity, {
                 body: JSON.stringify({ level: level })
             });
-            await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
+        }
+        await delayWithCountdown(10000, this.logger);
+    }
+
+    private async handleDownPrediction(midPrice: number, orderQuantity: number, orderLevels: number, precision: number) {
+        this.logger.info('Prediction indicates price is likely to go down.');
+        for (let level = 0; level < orderLevels - 1; level++) {
+            if (level === 0) {
+                const sellPrice = fixPrecision(midPrice, precision);
+                await this.client.placeOrder(this.config.symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
+            }
+            await this.client.placeOrder(this.config.symbol, 'ASK', 'SELL', null, orderQuantity, {
                 body: JSON.stringify({ level: level })
             });
-        } else {
-            const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-            const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-
-            let buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
-            let sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
-
-            await client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
-                body: JSON.stringify({ post_only_adjust: false })
-            });
-
-            await client.placeOrder(symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
-                body: JSON.stringify({ post_only_adjust: false })
-            });
         }
+        await delayWithCountdown(10000, this.logger);
     }
-    await delayWithCountdown(15000, logger);
+
+    private async handleStablePrediction(midPrice: number, orderQuantity: number, orderLevels: number, orderSpacing: number, stdDev: number, gamma: number, k: number, precision: number) {
+        this.logger.info('Prediction indicates price is likely to remain stable.');
+        const T = 1;
+        const t = 0;
+        const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
+        this.logger.info(`Optimal spread: ${optimalSpread}`);
+
+        for (let level = 0; level < orderLevels; level++) {
+            if (level === 0) {
+                await this.client.placeOrder(this.config.symbol, 'BID', 'BUY', null, orderQuantity, {
+                    body: JSON.stringify({ level: level })
+                });
+                await this.client.placeOrder(this.config.symbol, 'ASK', 'SELL', null, orderQuantity, {
+                    body: JSON.stringify({ level: level })
+                });
+            } else {
+                const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+                const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+
+                let buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
+                let sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+
+                await this.client.placeOrder(this.config.symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
+                    body: JSON.stringify({ post_only_adjust: false })
+                });
+
+                await this.client.placeOrder(this.config.symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
+                    body: JSON.stringify({ post_only_adjust: false })
+                });
+            }
+        }
+        await delayWithCountdown(15000, this.logger);
+    }
+
+    public async executeSpreadOrder() {
+        const openPosition = await this.client.getOnePosition(this.config.symbol);
+
+        if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
+            const duration = 10000;
+            const orderBookInterval = 200;
+            const tradeInterval = 1000;
+            let elapsed = 0; // 경과 시간
+
+            // 오더북 데이터 및 거래 데이터를 백그라운드에서 수집 시작
+            const orderBookData = collectOrderBookData(this.client, this.config.symbol, duration, orderBookInterval);
+            const tradeData = collectTradeData(this.client, this.config.symbol, duration, tradeInterval);
+
+            while (elapsed < duration) {
+                this.logger.info(`Elapsed Time: ${elapsed / 1000} seconds`);
+                await delay(1000);
+                elapsed += 1000;
+            }
+
+            // 백그라운드 데이터 수집 중 다른 작업 수행
+            const orderBookSnapshots = await orderBookData;
+            const tradeSnapshots = await tradeData;
+
+            // 표준 편차 계산
+            const stdDev = calculateStandardDeviation(tradeSnapshots);
+            const marketDirectionPrediction = predictMarketDirection(tradeSnapshots);
+            this.logger.info(`Market Direction Prediction: ${marketDirectionPrediction > 0 ? 'UP' : marketDirectionPrediction < 0 ? 'DOWN' : 'STABLE'}`);
+
+            // 매수/매도 데이터를 기반으로 시장 방향 예측
+            const bestBid = orderBookSnapshots[orderBookSnapshots.length - 1].orderBook.bids[0].price;
+            const bestAsk = orderBookSnapshots[orderBookSnapshots.length - 1].orderBook.asks[0].price;
+            const midPrice = (bestAsk + bestBid) / 2;
+
+            // 예측 수행 (수집된 오더북 데이터를 기반으로)
+            const orderBookPrediction = predictPriceMovement(orderBookSnapshots);
+            this.logger.info(`Order Book Prediction: ${orderBookPrediction > 0 ? 'UP' : orderBookPrediction < 0 ? 'DOWN' : 'STABLE'}`);
+
+            // 두 예측을 결합하여 최종 예측 결정
+            let prediction;
+            if (marketDirectionPrediction === 1) {
+                prediction = orderBookPrediction === -1 ? 0 : 1;
+            } else if (marketDirectionPrediction === -1) {
+                prediction = orderBookPrediction === 1 ? 0 : -1;
+            } else {
+                prediction = orderBookPrediction;
+            }
+
+            this.logger.info(`Final Combined Prediction: ${prediction === 1 ? 'UP' : prediction === -1 ? 'DOWN' : 'STABLE'}`);
+
+            // Prediction에 따라 처리할 함수 호출
+            if (prediction === 1) {
+                await this.handleUpPrediction(midPrice, this.config.orderQuantity, this.config.orderLevels, this.config.precision);
+            } else if (prediction === -1) {
+                await this.handleDownPrediction(midPrice, this.config.orderQuantity, this.config.orderLevels, this.config.precision);
+            } else {
+                await this.handleStablePrediction(midPrice, this.config.orderQuantity, this.config.orderLevels, this.config.orderSpacing, stdDev, this.config.gamma, this.config.k, this.config.precision);
+            }
+        }
+
+        await this.riskManagement.executeRiskManagement();
+    }
 }
 
 // body 값에 visible_quantity, reduce_only 추가하면 수수료 rebate가 안됨 -> WHY???????
-export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
-    const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision } = config;
-   
-    // RiskManagement 인스턴스 생성
-    const riskManagement = new RiskManagement(client, config, logger);
-    
-    const openPosition = await client.getOnePosition(config.symbol)
-
-    if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
-        const duration = 10000;
-        const orderBookInterval = 200;
-        const tradeInterval = 1000;
-        let elapsed = 0; // 경과 시간
-
-
-        // 오더북 데이터 및 거래 데이터를 백그라운드에서 수집 시작
-        const orderBookData = collectOrderBookData(client, symbol, duration, orderBookInterval);
-        const tradeData = collectTradeData(client, symbol, duration, tradeInterval);
-
-        while (elapsed < duration) {
-            logger.info(`Elapsed Time: ${elapsed / 1000} seconds`);
-            await delay(1000); //
-            elapsed += 1000;
-        }
-
-        // 백그라운드 데이터 수집 중 다른 작업 수행
-        const orderBookSnapshots = await orderBookData;
-        const tradeSnapshots = await tradeData;
-
-        // 표준 편차 계산
-        const stdDev = calculateStandardDeviation(tradeSnapshots);
-
-         // 매수/매도 데이터를 기반으로 시장 방향 예측
-        const marketDirectionPrediction = predictMarketDirection(tradeSnapshots);
-        logger.info(`Market Direction Prediction: ${marketDirectionPrediction > 0 ? 'UP' : marketDirectionPrediction < 0 ? 'DOWN' : 'STABLE'}`);
-
-
-        const bestBid = orderBookSnapshots[orderBookSnapshots.length - 1].orderBook.bids[0].price;
-        const bestAsk = orderBookSnapshots[orderBookSnapshots.length - 1].orderBook.asks[0].price;
-        const midPrice = (bestAsk + bestBid) / 2;
-
-        // 예측 수행 (수집된 오더북 데이터를 기반으로)
-        const orderBookPrediction = predictPriceMovement(orderBookSnapshots);
-        logger.info(`Order Book Prediction: ${orderBookPrediction > 0 ? 'UP' : orderBookPrediction < 0 ? 'DOWN' : 'STABLE'}`);
-
-
-        // 두 예측을 결합하여 최종 예측 결정
-        let prediction;
-
-        if (marketDirectionPrediction === 1) {
-            if (orderBookPrediction === -1) {
-                prediction = 0;  // Market이 Up, OrderBook이 Down이면 Stable로 판단
-            } else {
-                prediction = 1;  // Market이 Up이고, OrderBook이 Stable 또는 Up이면 Up으로 판단
-            }
-        } else if (marketDirectionPrediction === -1) {
-            if (orderBookPrediction === 1) {
-                prediction = 0;  // Market이 Down, OrderBook이 Up이면 Stable로 판단
-            } else {
-                prediction = -1;  // Market이 Down이고, OrderBook이 Stable 또는 Down이면 Down으로 판단
-            }
-        } else {
-            // Market이 Stable일 때, OrderBook의 예측을 따름
-            prediction = orderBookPrediction;
-        }
-
-        logger.info(`Final Combined Prediction: ${prediction === 1 ? 'UP' : prediction === -1 ? 'DOWN' : 'STABLE'}`);
-        
-        // Prediction에 따라 처리할 함수 호출
-        if (prediction === 1) {
-            await handleUpPrediction(client, symbol, midPrice, orderQuantity, orderLevels, precision, logger);
-        } 
-        else if (prediction === -1) {
-            await handleDownPrediction(client, symbol, midPrice, orderQuantity, orderLevels, precision, logger);
-        } 
-        else {
-            await handleStablePrediction(client, symbol, midPrice, orderQuantity, orderLevels, orderSpacing, stdDev, gamma, k, precision, logger);
-        }
-    }
-    
-    // 포지션이 열려 있다면 Risk Management를 실행
-    await riskManagement.executeRiskManagement();
-    
-}

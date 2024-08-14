@@ -23,6 +23,7 @@ export class MonitorPosition {
                     Math.abs(updatedPosition.data.position_qty * updatedPosition.data.average_open_price) < 10
                 ){
                     this.logger.info("All positions closed, stopping monitoring.");
+                    this.client.cancelAllOrders(this.symbol);
                     this.stopMonitoring();
                     resolve();
                 } else {
