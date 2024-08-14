@@ -55,10 +55,7 @@ export class MarketClient extends BaseClient {
   ): Promise<OrderBookResponse> {
     try {
       const query: Record<string, any> = {};
-  
-      if (max_level) {
-        query.max_level = max_level;
-      }
+      if (max_level) query.max_level = max_level;
   
       const queryString = new URLSearchParams(query).toString();
       const url = `${this.apiUrl}/v1/orderbook/${symbol}${queryString ? '?' + queryString : ''}`;

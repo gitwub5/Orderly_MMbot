@@ -360,9 +360,30 @@ export async function getUserStatics(
     }
 }
 
+export async function getAccountInfo(): Promise<any> {
+    try {
+        const url = `${RestAPIUrl.mainnet}/v1/client/info`;
+
+        const res = await signAndSendRequest(
+            accountInfo.accountId,
+            accountInfo.privateKey,
+            url,
+            {
+                method: 'GET',
+            }
+        );
+        const json = await res.json();
+        //console.log(json)
+        return json;
+    } catch (error) {
+        console.error('Error checking orders info:', error);
+        throw error;
+    }
+}
+
 // async function main() {
 //     try {
-//         const response = await getUserStatics();
+//         const response = await getAccountInfo();
 //         console.log(response.data)
 //     } catch (error) {
 //         console.error('Error in main function:', error);
@@ -370,4 +391,74 @@ export async function getUserStatics(
 // }
 // main().catch(error => {
 //   console.error('Unhandled error in main function:', error);
+// });
+
+
+//거래 내역 가져오는 함수
+async function getClientTradeHistory(
+    symbol?: string,
+    size?: number,
+    start_t?: number,
+    end_t?: number,
+    page?: number,
+  ): Promise<any> {
+    try {
+      const query: Record<string, any> = {};
+
+      if (symbol) query.symbol = symbol;
+      if (start_t) query.start_t = start_t;
+      if (end_t) query.end_t = end_t;
+      if (page) query.page = page;
+      if (size) query.size = size;
+
+      const queryString = new URLSearchParams(query).toString();
+      const url = `${RestAPIUrl.mainnet}/v1/trades${
+        queryString ? "?" + queryString : ""
+      }`;
+
+      const response = await signAndSendRequest(
+        accountInfo.accountId,
+        accountInfo.privateKey,
+        url
+      );
+
+      const json = await response.json();
+      //console.log('getTradeHistory:', JSON.stringify(json, undefined, 2));
+      return json;
+    } catch (error) {
+      throw new Error(`Error - Get Trade History: ${error}`);
+    }
+}
+
+// async function calculateTotals(tradeHistory: any[]) {
+//     let totalProfitLoss = 0;
+//     let totalVolume = 0;
+//     const numRows = tradeHistory.length;
+
+//     tradeHistory.forEach(trade => {
+//         totalProfitLoss += trade.realized_pnl;
+//         totalVolume += trade.executed_quantity * trade.executed_price;
+//     });
+
+//     return {
+//         totalProfitLoss,
+//         totalVolume,
+//         numRows
+//     };
+// }
+
+// async function main() {
+//     try {
+//         const response = await getClientTradeHistory('PERP_TON_USDC', 150, 1719154800000, 1723086000000);
+//         const { totalProfitLoss, totalVolume, numRows } = await calculateTotals(response.data.rows);
+//         console.log(`Total Profit/Loss: ${totalProfitLoss}`);
+//         console.log(`Total Volume: ${totalVolume}`);
+//         console.log(`Number of Rows Processed: ${numRows}`);
+//     } catch (error) {
+//         console.error('Error in main function:', error);
+//     }
+// }
+
+// main().catch(error => {
+//     console.error('Unhandled error in main function:', error);
 // });

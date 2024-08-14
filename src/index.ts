@@ -3,13 +3,13 @@ import { RestAPIUrl } from './enums';
 import { accountInfo } from './utils/account';
 import { StrategyConfig } from './strategy/strategyConfig';
 import { cancelAllOrdersAndClosePositions } from './strategy/closePosition';
-import { spreadOrder,spreadAskBidOrder } from './strategy/spreadOrder';
+import { spreadOrder } from './strategy/spreadOrder';
 import { strategies } from './strategy/strategies';
 import { startPeriodicMessages } from './utils/telegram/telegramBot';
 import { stopFlag } from './globals';
 import { createLogger } from './utils/logger/logger';
 
-// 전략 실행 함수
+// 전략 실행 함수 ㅇ
 async function executeStrategy(config: StrategyConfig) {
     const client = new MainClient(accountInfo, RestAPIUrl.mainnet);
     const { symbol, tradePeriodMs } = config;
@@ -19,7 +19,6 @@ async function executeStrategy(config: StrategyConfig) {
 
     let strategyRunning = true;
 
-    // Ctrl+C 이벤트 핸들러
     process.on('SIGINT', async () => {
         strategyRunning = false;
         logger.info(`Caught interrupt signal (SIGINT) for ${symbol}, canceling all orders and closing positions...`);
@@ -27,7 +26,6 @@ async function executeStrategy(config: StrategyConfig) {
         process.exit();
     });
 
-    // 전략 실행 반복 함수
     const runStrategy = async () => {
         if (!strategyRunning || stopFlag) {
             logger.info(`Trading for ${symbol} has been stopped.`);
@@ -36,7 +34,7 @@ async function executeStrategy(config: StrategyConfig) {
 
         try {
             logger.info(`Running market making strategy for ${symbol}...`);
-            await spreadAskBidOrder(client, config, logger);
+            await spreadOrder(client, config, logger);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             logger.error(`Error during strategy execution for ${symbol}: ${errorMessage}`);
@@ -47,7 +45,6 @@ async function executeStrategy(config: StrategyConfig) {
         }
     };
 
-    // 전략 실행
     try {
         await runStrategy();
     } catch (error) {
@@ -58,20 +55,10 @@ async function executeStrategy(config: StrategyConfig) {
 
 // 다중 심볼 전략 실행 함수
 async function executeMultipleStrategies(strategies: Record<string, StrategyConfig>) {
-    const strategyPromises = Object.values(strategies).map(config => executeStrategy(config));
-
-    const results = await Promise.allSettled(strategyPromises);
-
-    results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-            console.error(`Strategy execution failed for ${Object.keys(strategies)[index]}: ${result.reason}`);
-        } else {
-            console.log(`Strategy execution succeeded for ${Object.keys(strategies)[index]}`);
-        }
-    });
+    await Promise.all(Object.values(strategies).map(config => executeStrategy(config)));
 }
 
-// 즉시 실행 함수
+
 (async () => {
     try {
         console.log('Starting strategy execution for multiple symbols...');

@@ -1,11 +1,13 @@
+import { accountInfo } from "../../utils/account";
 import { account } from "../../interfaces/account";
 import { signAndSendRequest } from './signer';
+import { RestAPIUrl } from "../../enums";
 
-export async function getOrderlyPrice(account: account, url: string, symbol:string) {
+export async function getPrice(symbol:string) {
     const response = await signAndSendRequest(
-      account.accountId,
-      account.privateKey,
-      `${url}/v1/public/futures/${symbol}`
+      accountInfo.accountId,
+      accountInfo.privateKey,
+      `${RestAPIUrl.mainnet}/v1/public/futures/${symbol}`
     );
     const json = await response.json();
     const price = json.data.mark_price;
@@ -13,18 +15,37 @@ export async function getOrderlyPrice(account: account, url: string, symbol:stri
     return parseFloat(price);
 }
 
-//Snapshot of the current orderbook. Price of asks/bids are in descending order.
-type Level = { price: number; quantity: number };
-export type OrderbookSnapshot = { data: { asks: Level[]; bids: Level[] } };
+export interface OrderBookResponse {
+  success: boolean;
+  timestamp: number;
+  data: {
+    asks: {
+      price: number;
+      quantity: number;
+    }[];
+    bids: {
+      price: number;
+      quantity: number;
+    }[];
+    timestamp: number;
+  };
+}
 
-//TODO: 수정필요 & maxLevel은 몇으로 잡아야하는가?
-export async function getOrderlyOrderbook(account: account, url: string, symbol: string, maxLevel: number): Promise<OrderbookSnapshot> {
-  const res = await signAndSendRequest(
-    account.accountId,
-    account.privateKey,
-    `${url}/v1/orderbook/${symbol}${maxLevel != null ? `?max_level=${maxLevel}` : ''}`
+export async function getOrderbook(symbol: string, max_level: number = 10): Promise<OrderBookResponse> {
+  const query: Record<string, any> = {};
+  if (max_level) query.max_level = max_level;
+
+  const queryString = new URLSearchParams(query).toString();
+  const url = `${RestAPIUrl.mainnet}/v1/orderbook/${symbol}${
+    queryString ? "?" + queryString : ""
+  }`;
+
+  const response = await signAndSendRequest(
+    accountInfo.accountId,
+    accountInfo.privateKey,
+    url
   );
-  const json = await res.json();
-  console.log('getOrderbook:', JSON.stringify(json, undefined, 2));
+
+  const json = await response.json();
   return json;
 }

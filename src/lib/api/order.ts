@@ -51,11 +51,11 @@ async function testPlaceOrder(
 
 // async function main() {
 //     try {
-//       // const init: RequestInit = {
-//       //   body: JSON.stringify({
-//       //     level: 2,
-//       //   })}
-//       testPlaceOrder('PERP_LINK_USDC', 'LIMIT', 'BUY', 12.686 ,1);
+//       const init: RequestInit = {
+//         body: JSON.stringify({
+//           visible_quantity: 0,
+//         })}
+//       testPlaceOrder('PERP_LINK_USDC', 'BID', 'BUY', null , 1.5 ,init);
 //     } catch (error) {
 //         console.error('Error in main function:', error);
 //     }

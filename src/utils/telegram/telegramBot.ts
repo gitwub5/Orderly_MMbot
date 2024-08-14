@@ -11,9 +11,8 @@ import { setStopFlag } from '../../globals';
 
 dotenv.config();
 
-// Replace with your Telegram bot token
 const botToken = process.env.TELEGRAM_TOKEN as string;
-const chatId = process.env.TELEGRAM_CHAT_ID as string; 
+const chatId = process.env.TELEGRAM_CHAT_ID as string;
 
 if (!botToken || !chatId) {
     throw new Error('TELEGRAM_TOKEN and TELEGRAM_CHAT_ID must be set in your environment variables');
@@ -23,21 +22,19 @@ const bot = new TelegramBot(botToken, { polling: true });
 
 bot.on('polling_error', (error) => console.log(`Polling error: ${error.message}`));
 
-// Log all received messages to the console
 bot.on('message', (msg: TelegramBot.Message) => {
-  console.log(`Received message: ${msg.text}`);
+    console.log(`Received message: ${msg.text}`);
 });
 
 bot.onText(/\/start/, (msg) => {
-  console.log('Received /start command');
-  bot.sendMessage(msg.chat.id, "Welcome! Type 'Bot!' for help.");
+    console.log('Received /start command');
+    bot.sendMessage(msg.chat.id, "Welcome! Type 'Bot!' for help.");
 });
 
-// Add the /stats command to trigger sendTelegramMessage
 bot.onText(/\/report/, async (msg) => {
-    console.log('Received /stats command');
+    console.log('Received /report command');
     await sendReportMessage();
-  });
+});
 
 bot.onText(/\/stop/, async (msg) => {
     console.log('Received /stop command');
@@ -54,7 +51,7 @@ bot.onText(/\/stop/, async (msg) => {
 });
 
 bot.onText(/\/restart/, async (msg) => {
-    console.log('Received /stop command');
+    console.log('Received /restart command');
     setStopFlag(true);
 
     const client = new MainClient(accountInfo, RestAPIUrl.mainnet);
@@ -66,6 +63,7 @@ bot.onText(/\/restart/, async (msg) => {
     
     bot.sendMessage(msg.chat.id, 'Bot stopped and all positions closed for all symbols. Restarting...');
 
+    // Exit process to trigger a restart
     process.exit(1);
 });
 
@@ -83,29 +81,24 @@ bot.onText(/Bot!/, (msg) => {
     bot.sendMessage(msg.chat.id, helpMessage, { parse_mode: 'HTML' });
 });
 
-// Send Telegram Message
 export async function sendReportMessage(): Promise<void> {
     try {
-        const address = accountInfo.walletAddress; // Use the appropriate address
+        const address = accountInfo.walletAddress;
         const now = new Date();
-        const start_date = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 24 hours ago
-        const end_date = now.toISOString().split('T')[0]; // Today
+        const start_date = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const end_date = now.toISOString().split('T')[0];
 
         const userPoints = await getUsersPoints(address);
         const dailyVolume = await getDailyVolume(start_date, end_date);
-        //TODO: 토큰 별 pnl 가져오는 함수도 구현
         const positions = await getAllPositions();
-        // Filter positions to include only those in strategies
         const filteredPositions = positions.data.rows.filter((position: any) => strategies.hasOwnProperty(position.symbol));
-
         const currentHolding = await getCurrentHolding();
-        const hodling = currentHolding.data.holding[0].holding.toFixed(2);
+        const holding = currentHolding.data.holding[0].holding.toFixed(2);
         const token = currentHolding.data.holding[0].token;
 
-        // Extract only the required fields
         const { total_points, global_rank, tier, current_epoch_points, current_epoch_rank } = userPoints.data;
         const dailyVolumeData = dailyVolume.data.map((entry: any) => `
-    Date: ${entry.date}, Volume: ${entry.perp_volume.toFixed(2)} USDC`).join('');
+    ${entry.date}: ${entry.perp_volume.toFixed(2)} USDC`).join('');
         const { total_pnl_24_h } = positions.data;
         const positionsData = filteredPositions.map((position: any) => `
     <b>Symbol:</b> ${position.symbol}
@@ -113,7 +106,7 @@ export async function sendReportMessage(): Promise<void> {
     <b>PnL (24h):</b> ${position.pnl_24_h}
     <b>Unsettled PnL:</b> ${position.unsettled_pnl}`).join('\n');
 
-    const message = `
+        const message = `
     📊 <b>Orderly MMBot Report</b> 📊
     ---------------------------------
     <b>Total Points:</b> ${total_points}
@@ -127,17 +120,16 @@ export async function sendReportMessage(): Promise<void> {
     ---------------------------------
     <b>Total PnL (24h):</b> ${total_pnl_24_h}
     <b>Positions Info:</b> 
-    <b>Current Holding:</b> ${hodling} ${token} 
+    <b>Current Holding:</b> ${holding} ${token} 
     ${positionsData}
-            `;
-    
-            bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-        } catch (error) {
-            console.error('Error sending Telegram message:', error);
-        }
+        `;
+
+        bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    } catch (error) {
+        console.error('Error sending Telegram message:', error);
+    }
 }
 
-// Function to start the periodic message sending
 export function startPeriodicMessages() {
-    setInterval(sendReportMessage, 3600000); // 1 hour
+    setInterval(sendReportMessage, 3600000);
 }

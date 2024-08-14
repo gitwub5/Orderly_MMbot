@@ -136,14 +136,30 @@ export class MainClient {
 
   public async getOrderBookSpread(
     symbol: string
-  ): Promise<{ bid: number ; ask: number }> {
+  ): Promise<number> {
     try {
       const orderBook = await this.getOrderBook(symbol);
       const bestBid = orderBook.data.bids[0].price;
       const bestAsk = orderBook.data.asks[0].price;
-      return { bid: bestBid, ask: bestAsk };
+      const spread = bestAsk - bestBid;
+      return spread;
     } catch (error) {
       throw new Error(`Failed to fetch order book spread: ${error}`);
     }
   }
+
+  public async getOrderBookMidPrice(
+    symbol: string
+  ): Promise<number> {
+    try {
+      const orderBook = await this.getOrderBook(symbol);
+      const bestBid = orderBook.data.bids[0].price;
+      const bestAsk = orderBook.data.asks[0].price;
+      const midPrice = (bestAsk + bestBid) / 2;
+      return midPrice;
+    } catch (error) {
+      throw new Error(`Failed to fetch order book spread: ${error}`);
+    }
+  }
+
 }
