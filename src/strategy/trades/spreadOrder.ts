@@ -8,6 +8,68 @@ import { collectOrderBookData, predictPriceMovement } from "../data/orderBook.da
 import { collectTradeData, calculateStandardDeviation, predictMarketDirection } from "../data/trade.data";
 import winston from 'winston';
 
+async function handleUpPrediction(client: MainClient, symbol: string, midPrice: number, orderQuantity: number, orderLevels: number, precision: number, logger: winston.Logger) {
+    logger.info('Prediction indicates price is likely to go up.');
+    for (let level = 0; level < orderLevels - 1; level++) {
+        if (level === 0) {
+            const buyPrice = fixPrecision(midPrice, precision);
+            await client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
+        }
+        await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
+            body: JSON.stringify({ level: level })
+        });
+    }
+    await delayWithCountdown(5000, logger);
+}
+
+async function handleDownPrediction(client: MainClient, symbol: string, midPrice: number, orderQuantity: number, orderLevels: number, precision: number, logger: winston.Logger) {
+    logger.info('Prediction indicates price is likely to go down.');
+    for (let level = 0; level < orderLevels - 1; level++) {
+        if (level === 0) {
+            const sellPrice = fixPrecision(midPrice, precision);
+            await client.placeOrder(symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
+        }
+        await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
+            body: JSON.stringify({ level: level })
+        });
+    }
+    await delayWithCountdown(5000, logger);
+}
+
+async function handleStablePrediction(client: MainClient, symbol: string, midPrice: number, orderQuantity: number, orderLevels: number, orderSpacing: number, stdDev: number, gamma: number, k: number, precision: number, logger: winston.Logger) {
+    logger.info('Prediction indicates price is likely to remain stable.');
+    const T = 1;
+    const t = 0;
+    const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
+    logger.info(`Optimal spread: ${optimalSpread}`);
+
+    for (let level = 0; level < orderLevels; level++) {
+        if (level === 0) {
+            await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
+                body: JSON.stringify({ level: level })
+            });
+            await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
+                body: JSON.stringify({ level: level })
+            });
+        } else {
+            const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+            const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+
+            let buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
+            let sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+
+            await client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
+                body: JSON.stringify({ post_only_adjust: false })
+            });
+
+            await client.placeOrder(symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
+                body: JSON.stringify({ post_only_adjust: false })
+            });
+        }
+    }
+    await delayWithCountdown(15000, logger);
+}
+
 // body 값에 visible_quantity, reduce_only 추가하면 수수료 rebate가 안됨 -> WHY???????
 export async function spreadOrder(client: MainClient, config: StrategyConfig, logger: winston.Logger) {
     const { symbol, orderQuantity, orderLevels, orderSpacing, gamma, k, precision } = config;
@@ -15,7 +77,7 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
     const openPosition = await client.getOnePosition(config.symbol)
 
     if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
-        const duration = 10000; // 15초
+        const duration = 10000;
         const orderBookInterval = 200;
         const tradeInterval = 1000;
         let elapsed = 0; // 경과 시간
@@ -74,69 +136,16 @@ export async function spreadOrder(client: MainClient, config: StrategyConfig, lo
 
         logger.info(`Final Combined Prediction: ${prediction === 1 ? 'UP' : prediction === -1 ? 'DOWN' : 'STABLE'}`);
         
+        // Prediction에 따라 처리할 함수 호출
         if (prediction === 1) {
-            logger.info('Prediction indicates price is likely to go up.');
-            for (let level = 0; level < orderLevels ; level++) {
-                // if(level === 0){
-                //     const buyPrice = fixPrecision(midPrice, precision);
-                //     await client.placeOrder(symbol, 'LIMIT', 'BUY', buyPrice, orderQuantity);
-                // }
-                await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
-                    body: JSON.stringify({ level: level })
-                });
-            }
-            await delayWithCountdown(5000, logger); 
-
-        } else if (prediction === -1) {
-            logger.info('Prediction indicates price is likely to go down.');
-            for (let level = 0; level < orderLevels ; level++) {
-                // if(level === 0){
-                //     const sellPrice = fixPrecision(midPrice, precision);
-                //     await client.placeOrder(symbol, 'LIMIT', 'SELL', sellPrice, orderQuantity);
-                // }
-                await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
-                    body: JSON.stringify({ level: level })
-                });
-            }
-            await delayWithCountdown(5000, logger); 
-
-        } else {
-            logger.info('Prediction indicates price is likely to remain stable.');
-            const T = 1;
-            const t = 0;
-            const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
-            logger.info(`Optimal spread: ${optimalSpread}`);
-
-            for (let level = 0; level < orderLevels; level++) {
-
-                if(level === 0){
-                    await client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
-                        body: JSON.stringify({ level: level })
-                        //body: JSON.stringify({ level: level + 1 ,  visible_quantity: 0 })
-                    });
-                    await client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
-                        body: JSON.stringify({ level: level })
-                        //body: JSON.stringify({ level: level + 1 ,  visible_quantity: 0 })
-                    });
-                }
-                else{
-                    const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-                    const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-
-                    let buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
-                    let sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
-
-                    await client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
-                        body: JSON.stringify({ post_only_adjust: false })
-                    });
-
-                    await client.placeOrder(symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
-                        body: JSON.stringify({ post_only_adjust: false })
-                    });
-                 }
-            }
-            await delayWithCountdown(15000, logger); 
+            await handleUpPrediction(client, symbol, midPrice, orderQuantity, orderLevels, precision, logger);
         } 
+        else if (prediction === -1) {
+            await handleDownPrediction(client, symbol, midPrice, orderQuantity, orderLevels, precision, logger);
+        } 
+        else {
+            await handleStablePrediction(client, symbol, midPrice, orderQuantity, orderLevels, orderSpacing, stdDev, gamma, k, precision, logger);
+        }
     }
     
     // Risk management을 2초 간격으로 반복 실행
