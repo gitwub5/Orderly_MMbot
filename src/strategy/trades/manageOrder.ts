@@ -4,9 +4,21 @@ import { OrderResponse } from '../../interfaces';
 
 export class OrderManager {
     private client: MainClient;
+    private buyOrders: OrderResponse[];
+    private sellOrders: OrderResponse[];
 
     constructor(client: MainClient) {
         this.client = client;
+        this.buyOrders = [];
+        this.sellOrders = [];
+    }
+
+    public async saveBuyOrder(orderResponse: OrderResponse) {
+        this.buyOrders.push(orderResponse);
+    }
+
+    public async saveSellOrder(orderResponse: OrderResponse) {
+        this.sellOrders.push(orderResponse);
     }
 
     public async monitorOrder(orderId: number, timeoutMs: number = 60000): Promise<OrderResponse | null> {

@@ -131,7 +131,7 @@ export class SpreadOrder {
         const openPosition = await this.client.getOnePosition(this.config.symbol);
 
         if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
-            const duration = 20000;
+            const duration = 15000;
             const orderBookInterval = 200;
             const tradeInterval = 1000;
             let elapsed = 0; // 경과 시간

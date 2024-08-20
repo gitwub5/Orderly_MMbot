@@ -19,7 +19,7 @@ class StrategyExecutor {
     constructor(config: StrategyConfig) {
         const { symbol } = config;
         const token = symbol.split('_')[1];
-        this.client = new MainClient(accountInfo, RestAPIUrl.mainnet);
+        this.client = new MainClient(accountInfo, RestAPIUrl.testnet);
         this.config = config;
         this.logger = createLogger(token);
         this.setupSignalHandlers();
