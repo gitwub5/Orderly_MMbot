@@ -1,5 +1,5 @@
 import { MainClient } from './client/main.client';
-import { RestAPIUrl } from './enums';
+import { RestAPIUrl, WsPrivateUrl } from './enums';
 import { accountInfo } from './utils/account';
 import { StrategyConfig } from './interfaces/strategy';
 import { cancelAllOrdersAndClosePositions } from './strategy/trades/closePosition';
@@ -19,7 +19,7 @@ class StrategyExecutor {
     constructor(config: StrategyConfig) {
         const { symbol } = config;
         const token = symbol.split('_')[1];
-        this.client = new MainClient(accountInfo, RestAPIUrl.testnet);
+        this.client = new MainClient(accountInfo, RestAPIUrl.mainnet, WsPrivateUrl.mainnet);
         this.config = config;
         this.logger = createLogger(token);
         this.setupSignalHandlers();
@@ -42,6 +42,7 @@ class StrategyExecutor {
     public async stopStrategy() {
         if (!this.strategyRunning) return;  // 중복 실행 방지
         this.strategyRunning = false;
+        await this.client.disconnect();
         await cancelAllOrdersAndClosePositions(this.client, this.config.symbol);
     }
 

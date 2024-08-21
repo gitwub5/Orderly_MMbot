@@ -1,14 +1,17 @@
 //현재 걸려있는 주문들 관리
 import { MainClient } from '../../client/main.client';
 import { OrderResponse } from '../../interfaces';
+import { StrategyConfig } from '../../interfaces/strategy';
 
 export class OrderManager {
     private client: MainClient;
+    private config: StrategyConfig;
     private buyOrders: OrderResponse[];
     private sellOrders: OrderResponse[];
 
-    constructor(client: MainClient) {
+    constructor(client: MainClient, config: StrategyConfig) {
         this.client = client;
+        this.config = config;
         this.buyOrders = [];
         this.sellOrders = [];
     }
@@ -21,33 +24,40 @@ export class OrderManager {
         this.sellOrders.push(orderResponse);
     }
 
-    public async monitorOrder(orderId: number, timeoutMs: number = 60000): Promise<OrderResponse | null> {
-        const startTime = Date.now();
-        let orderStatus: OrderResponse | null = null;
+    public async monitorOrder() {
+       this.client.setMessageCallback(async (message) => {
+              if(message.topic === 'executionreport' && message.data.symbol){
+                const data = message.data;
+                if(data.status === 'FILLED'){
+                    await this.orderFilled(data.side, data.orderId);
+                }
+                // else if(data.status == 'PARTIAL_FILLED'){
 
-        while (Date.now() - startTime < timeoutMs) {
-            orderStatus = await this.client.getOrderStatus(orderId);
-            
-            if (orderStatus.data.status === 'FILLED') {
-                console.log(`Order ${orderId} has been filled.`);
-                return orderStatus; // 주문이 체결됨
-            }
-
-            if (orderStatus.data.status === 'CANCELED') {
-                console.log(`Order ${orderId} has been canceled.`);
-                return null; // 주문이 취소됨
-            }
-
-            // 주문이 체결되지 않았으면 일정 시간 대기
-            await this.delay(5000); // 5초 간격으로 확인
-        }
-
-        // 타임아웃이 발생한 경우
-        console.log(`Order ${orderId} did not fill within the timeout period.`);
-        return null;
+                // }
+              }
+          });
     }
 
-    private async delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    private async orderFilled(side: 'BUY' | 'SELL', orderId: number): Promise <void>{
+        if (side === 'BUY') {
+            await this.removeOrder(orderId, this.buyOrders);
+        } else if (side === 'SELL') {
+            await this.removeOrder(orderId, this.sellOrders);
+        }
+    }
+
+    private async removeOrder(orderId: number, orders: OrderResponse[]): Promise<void> {
+        const index = orders.findIndex(order => order.data.order_id === orderId);
+        if (index !== -1) {
+            orders.splice(index, 1);
+            console.log(`${orderId} has been removed.`);
+        }
+    }
+
+    public async getCurrentOrders():Promise< {buyOrders: OrderResponse[], sellOrders: OrderResponse[] }> {
+        return {
+            buyOrders: this.buyOrders,
+            sellOrders: this.sellOrders
+        };
     }
 }

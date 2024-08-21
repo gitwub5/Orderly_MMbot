@@ -38,11 +38,10 @@ export class SpreadOrder {
                     body: JSON.stringify({ level: level })
                 });
             } else {
-                const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-                const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+                const priceOffset = (optimalSpread / 2) * level * orderSpacing;
 
-                const buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
-                const sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+                const buyPrice = fixPrecision(midPrice - priceOffset, precision);
+                const sellPrice = fixPrecision(midPrice + priceOffset, precision);
                 
                 await this.client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
                     body: JSON.stringify({ post_only_adjust: false })
@@ -73,11 +72,10 @@ export class SpreadOrder {
                     body: JSON.stringify({ level: level })
                 });
             } else {
-                const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-                const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+                const priceOffset = (optimalSpread / 2) * level * orderSpacing;
 
-                const buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
-                const sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+                const buyPrice = fixPrecision(midPrice - priceOffset, precision);
+                const sellPrice = fixPrecision(midPrice + priceOffset, precision);
 
                 await this.client.placeOrder(symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
                     body: JSON.stringify({ post_only_adjust: false })
@@ -101,28 +99,18 @@ export class SpreadOrder {
         this.logger.info(`Optimal spread: ${optimalSpread}`);
 
         for (let level = 0; level < orderLevels; level++) {
-            if (level === 0) {
-                await this.client.placeOrder(symbol, 'BID', 'BUY', null, orderQuantity, {
-                    body: JSON.stringify({ level: level })
-                });
-                await this.client.placeOrder(symbol, 'ASK', 'SELL', null, orderQuantity, {
-                    body: JSON.stringify({ level: level })
-                });
-            } else {
-                const buyPriceOffset = (optimalSpread / 2) * level * orderSpacing;
-                const sellPriceOffset = (optimalSpread / 2) * level * orderSpacing;
+            const priceOffset = (optimalSpread / 2) * level * orderSpacing;
 
-                let buyPrice = fixPrecision(midPrice - buyPriceOffset, precision);
-                let sellPrice = fixPrecision(midPrice + sellPriceOffset, precision);
+            let buyPrice = fixPrecision(midPrice - priceOffset, precision);
+            let sellPrice = fixPrecision(midPrice + priceOffset, precision);
 
-                await this.client.placeOrder(this.config.symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
-                    body: JSON.stringify({ post_only_adjust: false })
-                });
+            await this.client.placeOrder(this.config.symbol, 'POST_ONLY', 'BUY', buyPrice, orderQuantity, {
+                body: JSON.stringify({ post_only_adjust: false })
+            });
 
-                await this.client.placeOrder(this.config.symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
-                    body: JSON.stringify({ post_only_adjust: false })
-                });
-            }
+            await this.client.placeOrder(this.config.symbol, 'POST_ONLY', 'SELL', sellPrice, orderQuantity, {
+                body: JSON.stringify({ post_only_adjust: false })
+            });
         }
         await delayWithCountdown(tradePeriodMs, this.logger);
     }

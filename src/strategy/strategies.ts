@@ -7,7 +7,7 @@ export const strategies: Record<string, StrategyConfig> = {
     'PERP_LINK_USDC': {
         symbol: 'PERP_LINK_USDC',
         precision: 3,
-        orderQuantity: 1.5,
+        orderQuantity: 1.0,
         tradePeriodMs: 45000,
         stdDevPeriod: 10,
         orderLevels: 3,

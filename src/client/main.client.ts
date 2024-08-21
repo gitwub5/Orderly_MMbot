@@ -1,18 +1,24 @@
 import { AccountClient } from './user.client';
 import { MarketClient } from './market.client';
 import { OrderClient } from './order.client';
+import { PrivateWsClient } from './ws.client';
 import * as Interfaces from '../interfaces/response';
 import { Account } from '../interfaces';
 
 export class MainClient {
-  public accountClient: AccountClient;
-  public marketClient: MarketClient;
-  public orderClient: OrderClient;
+  private accountClient: AccountClient;
+  private marketClient: MarketClient;
+  private orderClient: OrderClient;
+  private privateWsClient? : PrivateWsClient;
 
   constructor(account: Account, apiUrl: string, wsUrl?: string) {
     this.accountClient = new AccountClient(account, apiUrl);
     this.marketClient = new MarketClient(account, apiUrl);
     this.orderClient = new OrderClient(account, apiUrl);
+    if(wsUrl){
+      this.privateWsClient = new PrivateWsClient(account, wsUrl);
+      this.privateWsClient.connect();
+    }
   }
 
   // Exposing AccountClient methods
@@ -108,6 +114,37 @@ export class MainClient {
 
   public async getOpenOrders(): Promise<Interfaces.OrderResponse> {
     return this.orderClient.getOpenOrders();
+  }
+
+  //Exposing Private Websocket methods
+  public async connect() : Promise <void> {
+    if(this.privateWsClient){
+       return this.privateWsClient?.connect();
+    }
+  }
+
+  public async disconnect() : Promise <void> {
+    if(this.privateWsClient){
+      return this.privateWsClient?.disconnect();
+    }
+  }
+
+  public async setMessageCallback(callback: (message: any) => void){
+    if(this.privateWsClient){
+      return this.privateWsClient?.setMessageCallback(callback); 
+    }
+  }
+
+  public async subExecutionReport(): Promise<void> {
+    if(this.privateWsClient){
+      return this.privateWsClient.subExecutionReport();
+    }
+  }
+
+  public async unsubExecutionReport(): Promise<void> {
+    if(this.privateWsClient){
+      return this.privateWsClient.unsubExecutionReport();
+    }
   }
 
   //Main Class methods
