@@ -7,6 +7,7 @@ import { delay, delayWithCountdown } from "../../utils/delay";
 import { collectOrderBookData, predictPriceMovement } from "../data/orderBook.data";
 import { collectTradeData, calculateStandardDeviation, predictMarketDirection } from "../data/trade.data";
 import winston from 'winston';
+import { OrderManager } from "./manageOrder";
 
 export class SpreadOrder {
     private client: MainClient;
@@ -29,7 +30,7 @@ export class SpreadOrder {
         const t = 0;
         const optimalSpread = await calculateOptimalSpread(stdDev, T, t, gamma, k);
         this.logger.info(`Optimal spread: ${optimalSpread}`);
-
+        
         for (let level = 0; level < orderLevels; level++) {
             if (level === 0) {
                 const buyPrice = fixPrecision(midPrice, precision);
@@ -116,6 +117,7 @@ export class SpreadOrder {
     }
 
     public async executeSpreadOrder() {
+        const orderManager = new OrderManager(this.client, this.config);
         const openPosition = await this.client.getOnePosition(this.config.symbol);
 
         if (openPosition.data.position_qty === 0 || Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
@@ -130,8 +132,8 @@ export class SpreadOrder {
 
             while (elapsed < duration) {
                 this.logger.info(`Elapsed Time: ${elapsed / 1000} seconds`);
-                await delay(1000);
-                elapsed += 1000;
+                await delay(5000);
+                elapsed += 5000;
             }
 
             // 백그라운드 데이터 수집 중 다른 작업 수행
@@ -173,7 +175,7 @@ export class SpreadOrder {
                 await this.handleStablePrediction(midPrice, stdDev, this.config);
             }
         }
-
+        await orderManager.monitorOrder();
         await this.riskManagement.executeRiskManagement();
     }
 }

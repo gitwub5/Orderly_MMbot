@@ -83,19 +83,6 @@ async function executeMultipleStrategies(strategies: Record<string, StrategyConf
         }
     };
 
-    // SIGINT 및 SIGTERM 신호를 처리하여 모든 전략 중단
-    process.on('SIGINT', async () => {
-        console.log("Caught interrupt signal (SIGINT), stopping all strategies...");
-        await stopAllStrategies();
-        process.exit();
-    });
-
-    process.on('SIGTERM', async () => {
-        console.log("Caught termination signal (SIGTERM), stopping all strategies...");
-        await stopAllStrategies();
-        process.exit();
-    });
-
     await Promise.all(executors.map(executor => executor.run()));
 }
 

@@ -14,6 +14,8 @@ export class OrderManager {
         this.config = config;
         this.buyOrders = [];
         this.sellOrders = [];
+        
+        this.client.subExecutionReport();
     }
 
     public async saveBuyOrder(orderResponse: OrderResponse) {
@@ -29,7 +31,8 @@ export class OrderManager {
               if(message.topic === 'executionreport' && message.data.symbol){
                 const data = message.data;
                 if(data.status === 'FILLED'){
-                    await this.orderFilled(data.side, data.orderId);
+                    console.log(data);
+                    //await this.orderFilled(data.side, data.orderId);
                 }
                 // else if(data.status == 'PARTIAL_FILLED'){
 

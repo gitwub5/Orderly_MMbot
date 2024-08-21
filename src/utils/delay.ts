@@ -6,7 +6,7 @@ export function delay(ms: number) {
 }
 
 export async function delayWithCountdown(ms: number, logger: winston.Logger) {
-    const interval = 1000; // 1초 간격
+    const interval = 5000; // 1초 간격
     let remainingTime = ms;
 
     while (remainingTime > 0) {
