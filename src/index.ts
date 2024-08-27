@@ -11,45 +11,26 @@ import { createLogger } from './utils/logger/logger';
 import winston from 'winston';
 
 class StrategyExecutor {
-    private client: MainClient;
-    private config: StrategyConfig;
-    private logger: winston.Logger;
-    private strategyRunning: boolean = true;
+    private client: MainClient; // MainClient (오덜리 연결)
+    private config: StrategyConfig; // 전략 안터페이스
+    private logger: winston.Logger; // 로거 호출
+    private strategyRunning: boolean = true; // 현재 실행 중인지 확인하는 변수
 
     constructor(config: StrategyConfig) {
         const { symbol } = config;
-        const token = symbol.split('_')[1];
-        this.client = new MainClient(accountInfo, RestAPIUrl.mainnet, WsPrivateUrl.mainnet);
+        this.client = new MainClient(accountInfo, RestAPIUrl.mainnet, WsPrivateUrl.mainnet); // 계정 정보, API 주소, ws 주소
         this.config = config;
-        this.logger = createLogger(token);
-        this.setupSignalHandlers();
+        const token = symbol.split('_')[1];
+        this.logger = createLogger(token); // 토큰별 로거 생성
     }
 
-    private setupSignalHandlers() {
-        process.on('SIGINT', async () => {
-            this.logger.info(`Caught interrupt signal (SIGINT) for ${this.config.symbol}, canceling all orders and closing positions...`);
-            await this.stopStrategy();
-            process.exit();
-        });
-
-        process.on('SIGTERM', async () => {
-            this.logger.info(`Caught termination signal (SIGTERM) for ${this.config.symbol}, canceling all orders and closing positions...`);
-            await this.stopStrategy();
-            process.exit();
-        });
-    }
-
-    public async stopStrategy() {
-        if (!this.strategyRunning) return;  // 중복 실행 방지
-        this.strategyRunning = false;
-        await this.client.disconnect();
-        await cancelAllOrdersAndClosePositions(this.client, this.config.symbol);
-    }
-
+    // 전략 실행 함수
     private async executeStrategy() {
         try {
             this.logger.info(`Running market making strategy for ${this.config.symbol}...`);
+            // SpreadOrder 객체 생성
             const spreadOrderExecutor = new SpreadOrder(this.client, this.config, this.logger);
+            // SpreadOrder 실행
             await spreadOrderExecutor.executeSpreadOrder();
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
@@ -61,27 +42,43 @@ class StrategyExecutor {
         while (this.strategyRunning && !stopFlag) {
             await this.executeStrategy();
             if (this.strategyRunning && !stopFlag) {
-                await this.delay(5000);
-                //5초후 다시 시작
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
-        this.logger.info(`Trading for ${this.config.symbol} has been stopped.`);
     }
 
-    private async delay(ms: number) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    public async stopStrategy() {
+        this.strategyRunning = false;
+        // 모든 주문 취소 및 포지션 정리
+        await cancelAllOrdersAndClosePositions(this.client, this.config.symbol);
+        // 웹소켓 연결 해제
+        await this.client.disconnect();
+        this.logger.info(`Strategy for ${this.config.symbol} has been stopped.`);
     }
 }
 
+// 중앙에서 실행 전략 종료 관리
+async function stopAllStrategies(executors: StrategyExecutor[]) {
+    await Promise.all(executors.map(executor => executor.stopStrategy()));
+}
+
+// 여러 토큰 동시에 실행하는 함수 
 async function executeMultipleStrategies(strategies: Record<string, StrategyConfig>) {
     const executors = Object.values(strategies).map(config => new StrategyExecutor(config));
 
-    // 모든 전략을 중단하는 함수
-    const stopAllStrategies = async () => {
-        for (const executor of executors) {
-            await executor.stopStrategy(); 
-        }
-    };
+    // 전역 신호 처리
+    // Ctrl+C 입력시, 프로세스에 SIGINT라는 신호가 전달됨 -> 전략 실행 종료 이후 프로세스 실행 종료
+    process.on('SIGINT', async () => {
+        console.log("Received SIGINT, stopping all strategies...");
+        await stopAllStrategies(executors);
+        process.exit();
+    });
+    // Kill 명령을 통해 프로세스 종료 시 프로세스에 SIGTERM 신호가 전달됨 -> 전략 실행 종료 이후 프로세스 실행 종료
+    process.on('SIGTERM', async () => {
+        console.log("Received SIGTERM, stopping all strategies...");
+        await stopAllStrategies(executors);
+        process.exit();
+    });
 
     await Promise.all(executors.map(executor => executor.run()));
 }
@@ -90,10 +87,11 @@ async function executeMultipleStrategies(strategies: Record<string, StrategyConf
 (async () => {
     try {
         console.log('Starting strategy execution for multiple symbols...');
+        // 여러 토큰 동시에 전략 실행
         await executeMultipleStrategies(strategies);
+        // 주기적으로 Telegram 메세지 전송
         startPeriodicMessages();
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        console.error(`Strategy execution failed: ${errorMessage}`);
+        console.error(`Strategy execution failed: ${error}`);
     }
 })();

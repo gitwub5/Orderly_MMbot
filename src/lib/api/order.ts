@@ -26,18 +26,15 @@ export class placeOrder {
       const response = await signAndSendRequest(
         accountInfo.accountId,
         accountInfo.privateKey,
-        `${RestAPIUrl.mainnet}/v1/order`,
+        `${RestAPIUrl.testnet}/v1/order`,
         {
           method: "POST",
           body: JSON.stringify(body),
-          headers: {
-            'Content-Type': 'application/json',
-          },
         }
       );
 
       const json = await response.json();
-      // console.log('Orderly Order Response:', JSON.stringify(json, undefined, 2));
+      console.log('Orderly Order Response:', JSON.stringify(json, undefined, 2));
       return json;
     } catch (error) {
       console.error("Error creating order:", error);
@@ -62,6 +59,17 @@ export class placeOrder {
     return await this.placeOrder(symbol, "MARKET", side, null, amount);
   }
 }
+
+async function main() {
+    try {
+      await placeOrder.limitOrder('PERP_LINK_USDC', 'BUY', 11.0, 1 )
+    } catch (error) {
+        console.error('Error in main function:', error);
+    }
+}
+main().catch(error => {
+  console.error('Unhandled error in main function:', error);
+});
 
 export async function editOrder(
   orderId: string,

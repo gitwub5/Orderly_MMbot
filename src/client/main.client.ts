@@ -1,4 +1,4 @@
-import { AccountClient } from './user.client';
+import { AccountClient } from './account.client';
 import { MarketClient } from './market.client';
 import { OrderClient } from './order.client';
 import { PrivateWsClient } from './ws.client';

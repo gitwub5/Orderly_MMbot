@@ -27,7 +27,7 @@ export class PrivateWsClient{
       await this.authenticate();
 
       this.subscriptions.forEach(async (subscription: any) => {
-        await this.sendSubscription(subscription);
+        await this.sendSubscribe(subscription);
       });
 
       this.startPing();
@@ -91,7 +91,7 @@ export class PrivateWsClient{
   } 
   
 
-  public async disconnectPrivate() {
+  public async disconnect() {
     if (this.websocket) {
       this.websocket.close();
       this.websocket = null;
@@ -100,7 +100,7 @@ export class PrivateWsClient{
     }
   }
 
-  public async sendSubscription(subscription: any) {
+  public async sendSubscribe(subscription: any) {
     if (
       this.websocket &&
       this.websocket.readyState === WebSocket.OPEN
@@ -116,7 +116,7 @@ export class PrivateWsClient{
     }
   }
 
-  public async unsubscribe(subscription: any) {
+  public async sendUnsubscribe(subscription: any) {
     this.subscriptions.delete(subscription);
     console.log("Sent unsubscription private:", subscription);
     // Unsubscribe from the server if needed
@@ -143,13 +143,6 @@ export class PrivateWsClient{
     }
   }
 
-  public async disconnect(): Promise<void> {
-    if (this.websocket) {
-      this.websocket.close();
-      console.log('WebSocket connection closed by the client.');
-    }
-  }
-
   public async subExecutionReport(): Promise<void> {
     const submessage = {
       id: `id-execution-report`,
@@ -157,7 +150,7 @@ export class PrivateWsClient{
       event: "subscribe",
     };
 
-    await this.sendSubscription(submessage);
+    await this.sendSubscribe(submessage);
   }
 
   public async unsubExecutionReport(): Promise<void> {
@@ -167,7 +160,7 @@ export class PrivateWsClient{
       event: "unsubscribe",
     };
 
-    await this.unsubscribe(submessage);
+    await this.sendUnsubscribe(submessage);
   }
 
   async subPositionPush(): Promise<void> {
@@ -177,7 +170,7 @@ export class PrivateWsClient{
       event: "subscribe",
     };
 
-    await this.sendSubscription(submessage);
+    await this.sendSubscribe(submessage);
   }
 }
 

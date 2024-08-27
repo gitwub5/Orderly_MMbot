@@ -1,5 +1,7 @@
 import WebSocket from 'ws';
 import { Account } from '../../interfaces/account';
+import { accountInfo } from '../../utils/account';
+import { WsPublicUrl } from '../../enums';
 
 export class WebSocketManager {
   public url: string;
@@ -134,32 +136,81 @@ export class WebSocketManager {
     };
     this.sendSubscription(submessage);
   }
+
+  async indexPrice(symbol : string){
+    const modifiedSymbol = symbol.replace('PERP', 'SPOT');
+    const submessage = {
+      id: `id-indexprice`,
+      topic: `${modifiedSymbol}@indexprice`,
+      event: "subscribe",
+    };
+    this.sendSubscription(submessage);
+  }
+
+  async trade(symbol : string){
+    const submessage = {
+      id: `id-trade`,
+      topic: `${symbol}@trade`,
+      event: "subscribe",
+    };
+    this.sendSubscription(submessage);
+  }
+
+  async bbo(symbol : string){
+    const submessage = {
+      id: `id-bbo`,
+      topic: `${symbol}@bbo`,
+      event: "subscribe",
+    };
+    this.sendSubscription(submessage);
+  }
 }
 
 // // TEST
 // async function main() {
-//   const wsClient = new WebSocketManager();
+//   const wsClient = new WebSocketManager(accountInfo, WsPublicUrl.testnet);
 
 //   await wsClient.connect();
 
-//   const symbol = 'PERP_TON_USDC';
+//   const symbol = 'PERP_LINK_USDC';
+//   const modifiedSymbol = symbol.replace('PERP', 'SPOT');
 
+//   await wsClient.ticker(symbol);
 //   await wsClient.markPrice(symbol);
+//   await wsClient.indexPrice(symbol);
+//   // await wsClient.bbo(symbol);
+//   // await wsClient.trade(symbol);
 
 //   wsClient.setMessageCallback((message) => {
+//     if (message.topic === `${symbol}@ticker`){
+//       const data = message.data;
+//       console.log('Received Mark price:', data);
+//       }
 //     if (message.topic === `${symbol}@markprice`){
 //     const data = message.data;
 //     const price = data.price;
-//     console.log('Received price:', price);
+//     console.log('Received Mark price:', price);
 //     }
-//   });
+//     if (message.topic === `${modifiedSymbol}@indexprice`){
+//       const data = message.data;
+//       const price = data.price;
+//       console.log('Received Index price:', price);
+//     }
+//     if (message.topic === `${symbol}@bbo`){
+//       const data = message.data;
+//       console.log('Received bbo:', data);
+//     }
+//     if (message.topic === `${symbol}@trade`){
+//       const data = message.data;
+//       console.log('Received trade:', data);
+//     }
 
-  
+//   });
 
 //   // Wait some time to ensure the subscription is processed before disconnecting
 //   setTimeout(() => {
 //     wsClient.disconnect();
-//   }, 30000); // Keep the connection open for 30 seconds
+//   }, 60 * 60 * 1000); 
 // }
 
 // main().catch(error => {
