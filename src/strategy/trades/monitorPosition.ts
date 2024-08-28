@@ -14,6 +14,7 @@ export class MonitorPosition {
         this.logger = logger;
     }
 
+    // 인터벌 간격마다 symbol에 대한 포지션 확인
     public async monitor(callback: (updatedPosition: PositionResponse, stopMonitoring: () => void) => Promise<void>): Promise<void> {
         await new Promise<void>((resolve) => {
             this.monitorIntervalId = setInterval(async () => {
@@ -38,6 +39,7 @@ export class MonitorPosition {
         });
     }
 
+    // 모니터링 중지
     public stopMonitoring() {
         if (this.monitorIntervalId) {
             clearInterval(this.monitorIntervalId);

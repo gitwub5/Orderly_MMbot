@@ -430,35 +430,3 @@ async function getClientTradeHistory(
     }
 }
 
-// async function calculateTotals(tradeHistory: any[]) {
-//     let totalProfitLoss = 0;
-//     let totalVolume = 0;
-//     const numRows = tradeHistory.length;
-
-//     tradeHistory.forEach(trade => {
-//         totalProfitLoss += trade.realized_pnl;
-//         totalVolume += trade.executed_quantity * trade.executed_price;
-//     });
-
-//     return {
-//         totalProfitLoss,
-//         totalVolume,
-//         numRows
-//     };
-// }
-
-// async function main() {
-//     try {
-//         const response = await getClientTradeHistory('PERP_TON_USDC', 150, 1719154800000, 1723086000000);
-//         const { totalProfitLoss, totalVolume, numRows } = await calculateTotals(response.data.rows);
-//         console.log(`Total Profit/Loss: ${totalProfitLoss}`);
-//         console.log(`Total Volume: ${totalVolume}`);
-//         console.log(`Number of Rows Processed: ${numRows}`);
-//     } catch (error) {
-//         console.error('Error in main function:', error);
-//     }
-// }
-
-// main().catch(error => {
-//     console.error('Unhandled error in main function:', error);
-// });

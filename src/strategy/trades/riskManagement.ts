@@ -19,6 +19,7 @@ export class RiskManagement {
         this.monitorPosition = new MonitorPosition(client, config.symbol, logger); // 모니터링 클래스 인스턴스 생성
     }
 
+    // 포지션 응답으로 시장가와 포지션 평균 가격을 비교하여 pnl 계산
     private async calculatePnLPercentage(openPosition: PositionResponse): Promise<number> {
         const { position_qty, mark_price, average_open_price } = openPosition.data;
 
@@ -32,10 +33,12 @@ export class RiskManagement {
         return pnlPercentage;
     }
 
+    // 리스크 관리 실행 메소드
     public async executeRiskManagement(): Promise<void> {
         const openPosition = await this.client.getOnePosition(this.config.symbol);
         const positionQty = openPosition.data.position_qty;
 
+        // 포지션이 없는 경우 남아 있는 모든 주문을 취소 후 리턴
         if(positionQty === 0){
             await this.client.cancelAllOrders(this.config.symbol);
             return;
@@ -43,15 +46,18 @@ export class RiskManagement {
 
         const pnlPercentage = await this.calculatePnLPercentage(openPosition);
 
-        // 열려있는 포지션이 10달러미만인 경우
+        // 열려있는 포지션이 10달러 미만인 경우 (10달러 미만인 지정가 주문이 불가능 함)
         if (Math.abs(openPosition.data.position_qty * openPosition.data.average_open_price) < 10) {
             await this.client.cancelAllOrders(this.config.symbol);
+            // 남아있는 포지션이 0.03% 이익인 경우 시장가로 정리 (시장가 수수료가 0.03%)
             if (pnlPercentage > 0.0003) {
                 await this.placeMarketOrder(positionQty);
                 return;
             }
         }
+        // 열려있는 포지션이 있는 경우 (10달러 이상)
         else {
+            // 모든 주문 취소
             await this.client.cancelAllOrders(this.config.symbol);
             let stopLossRatio = 0.03;
             let takeProfitRatio = 0.1;

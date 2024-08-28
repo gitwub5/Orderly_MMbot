@@ -58,21 +58,6 @@ export function calculateStandardDeviation(snapshots: TradeSnapshot[]): number {
         throw new Error("No valid prices available to calculate standard deviation.");
     }
 
-    // 각 스냅샷의 매수와 매도 prices를 출력
-    // snapshots.forEach((snapshot, index) => {
-    //     const buyPrices = snapshot.buyOrders.map(order => order.price);
-    //     const sellPrices = snapshot.sellOrders.map(order => order.price);
-
-    //     let output = `Snapshot ${index + 1}: Timestamp: ${snapshot.timestamp}`;
-    //     if (buyPrices.length > 0) {
-    //         output += `, Buy Prices: [${buyPrices.join(", ")}]`;
-    //     }
-    //     if (sellPrices.length > 0) {
-    //         output += `, Sell Prices: [${sellPrices.join(", ")}]`;
-    //     }
-    //     console.log(output);
-    // });
-
     const mean = prices.reduce((acc, price) => acc + price, 0) / prices.length;
     const variance = prices.reduce((acc, price) => acc + Math.pow(price - mean, 2), 0) / prices.length;
     return Math.sqrt(variance);
